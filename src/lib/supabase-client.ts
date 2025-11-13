@@ -12,18 +12,24 @@ import {
 // AUTH FUNCTIONS
 // ===============================
 
-export const sendMagicLink = async (email: string, isSignup: boolean = true) => {
+export const sendMagicLink = async (email: string, isSignup: boolean = true, autoClose: boolean = false) => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('📧 Mock: Enviando Magic Link para:', email, isSignup ? '(Cadastro)' : '(Login)');
+    console.log('📧 Mock: Enviando Magic Link para:', email, isSignup ? '(Cadastro)' : '(Login)', autoClose ? '(Auto-fechar)' : '');
     return { success: true };
   }
 
   try {
+    // Construir URL de callback com parâmetro autoclose se necessário
+    let callbackUrl = `${window.location.origin}/callback`;
+    if (autoClose) {
+      callbackUrl += '?autoclose=true';
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: isSignup, // Criar usuário apenas se for cadastro
-        emailRedirectTo: `${window.location.origin}/callback`, // Redirecionar para página de callback
+        emailRedirectTo: callbackUrl, // Redirecionar para página de callback
       },
     });
 

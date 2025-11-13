@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Clock4, Mail, Loader2, UserPlus, LogIn } from 'lucide-react';
+import { Clock4, Mail, Loader2, UserPlus, LogIn, ExternalLink } from 'lucide-react';
 import { sendMagicLink, verifyMagicLink } from '@/lib/supabase-client';
 
 const registerSchema = z.object({
@@ -36,6 +36,37 @@ export function MagicLinkForm() {
   const [userEmail, setUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Listener para postMessage da janela de callback
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Verificar origem por segurança
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data.type === 'AUTH_SUCCESS') {
+        console.log('✅ Autenticação bem-sucedida via Magic Link!');
+        setStep('success');
+        // Redirecionar para dashboard após 1 segundo
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+      } else if (event.data.type === 'AUTH_ERROR') {
+        console.error('❌ Erro na autenticação:', event.data.error);
+        setError(event.data.error);
+        setStep('form');
+        setIsLoading(false);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -64,7 +95,7 @@ export function MagicLinkForm() {
     setIsLoading(true);
     setError('');
     try {
-      await sendMagicLink(data.email, true); // true for signup
+      await sendMagicLink(data.email, true, true); // (email, isSignup=true, autoClose=true)
       setUserEmail(data.email);
       setStep('sent');
     } catch (error: any) {
@@ -79,7 +110,7 @@ export function MagicLinkForm() {
     setIsLoading(true);
     setError('');
     try {
-      await sendMagicLink(data.email, false); // false for login
+      await sendMagicLink(data.email, false, true); // (email, isSignup=false, autoClose=true)
       setUserEmail(data.email);
       setStep('sent');
     } catch (error: any) {

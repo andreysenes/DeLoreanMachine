@@ -3,18 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock4, Loader2, AlertCircle } from 'lucide-react';
+import { Clock4, Loader2, AlertCircle, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthCallbackPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string>('');
+  const [shouldClose, setShouldClose] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Verificar se deve fechar a aba automaticamente
+        const autoClose = searchParams.get('autoclose') === 'true';
+        setShouldClose(autoClose);
+
         // Verificar se tem parâmetros de erro
         const errorParam = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
@@ -22,13 +27,36 @@ export default function AuthCallbackPage() {
         if (errorParam) {
           setError(errorDescription || errorParam);
           setStatus('error');
+          
+          if (autoClose) {
+            // Notificar erro para a aba pai
+            if (window.opener) {
+              window.opener.postMessage({ 
+                type: 'AUTH_ERROR', 
+                error: errorDescription || errorParam 
+              }, window.location.origin);
+            }
+            // Tentar fechar após 3 segundos
+            setTimeout(() => {
+              window.close();
+            }, 3000);
+          }
           return;
         }
 
         // Processar sessão do Magic Link
         if (!supabase) {
-          setError('Erro de configuração do Supabase');
+          const errorMsg = 'Erro de configuração do Supabase';
+          setError(errorMsg);
           setStatus('error');
+          
+          if (autoClose && window.opener) {
+            window.opener.postMessage({ 
+              type: 'AUTH_ERROR', 
+              error: errorMsg 
+            }, window.location.origin);
+            setTimeout(() => window.close(), 3000);
+          }
           return;
         }
 
@@ -38,28 +66,70 @@ export default function AuthCallbackPage() {
           console.error('Erro ao obter sessão:', sessionError);
           setError(sessionError.message);
           setStatus('error');
+          
+          if (autoClose && window.opener) {
+            window.opener.postMessage({ 
+              type: 'AUTH_ERROR', 
+              error: sessionError.message 
+            }, window.location.origin);
+            setTimeout(() => window.close(), 3000);
+          }
           return;
         }
 
         if (data?.session) {
           setStatus('success');
-          // Redirecionar para o dashboard após 1 segundo
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 1000);
+          
+          if (autoClose) {
+            // Notificar sucesso para a aba pai
+            if (window.opener) {
+              window.opener.postMessage({ 
+                type: 'AUTH_SUCCESS', 
+                user: data.session.user 
+              }, window.location.origin);
+            }
+            
+            // Tentar fechar a aba após 1 segundo
+            setTimeout(() => {
+              window.close();
+            }, 1000);
+          } else {
+            // Comportamento normal - redirecionar para dashboard
+            setTimeout(() => {
+              router.push('/dashboard');
+            }, 1000);
+          }
         } else {
-          setError('Nenhuma sessão encontrada. Tente fazer login novamente.');
+          const errorMsg = 'Nenhuma sessão encontrada. Tente fazer login novamente.';
+          setError(errorMsg);
           setStatus('error');
+          
+          if (autoClose && window.opener) {
+            window.opener.postMessage({ 
+              type: 'AUTH_ERROR', 
+              error: errorMsg 
+            }, window.location.origin);
+            setTimeout(() => window.close(), 3000);
+          }
         }
       } catch (err: any) {
         console.error('Erro no callback de autenticação:', err);
-        setError(err.message || 'Erro desconhecido');
+        const errorMsg = err.message || 'Erro desconhecido';
+        setError(errorMsg);
         setStatus('error');
+        
+        if (shouldClose && window.opener) {
+          window.opener.postMessage({ 
+            type: 'AUTH_ERROR', 
+            error: errorMsg 
+          }, window.location.origin);
+          setTimeout(() => window.close(), 3000);
+        }
       }
     };
 
     handleAuthCallback();
-  }, [searchParams, router]);
+  }, [searchParams, router, shouldClose]);
 
   if (status === 'loading') {
     return (
