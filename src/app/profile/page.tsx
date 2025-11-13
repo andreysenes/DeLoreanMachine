@@ -24,7 +24,6 @@ import {
   updateUserSettingsComplete, 
   logout 
 } from '@/lib/supabase-client';
-import { mockUser } from '@/lib/supabase-placeholders';
 
 const profileSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -70,13 +69,23 @@ export default function ProfilePage() {
       try {
         setIsLoadingData(true);
         
-        // Carregar dados do usuário
+        // Carregar dados do usuário do banco
         const user = await getCurrentUser();
-        if (user) {
+        const profile = await getUserProfile();
+        
+        if (user && profile) {
+          // Usar dados do banco (user_profiles)
           profileForm.reset({
-            nome: (user.user_metadata as any)?.nome || mockUser.nome,
-            sobrenome: (user.user_metadata as any)?.sobrenome || mockUser.sobrenome,
-            email: user.email || mockUser.email,
+            nome: profile.first_name || '',
+            sobrenome: profile.last_name || '',
+            email: user.email || '',
+          });
+        } else if (user) {
+          // Fallback: usar user_metadata se não há perfil ainda
+          profileForm.reset({
+            nome: (user.user_metadata as any)?.nome || '',
+            sobrenome: (user.user_metadata as any)?.sobrenome || '',
+            email: user.email || '',
           });
         }
 
@@ -103,13 +112,27 @@ export default function ProfilePage() {
   const onProfileSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
     try {
-      console.log('Atualizando perfil:', data);
-      // Por enquanto apenas simular - futuramente implementar updateUserProfile
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('Perfil atualizado com sucesso!');
+      await updateUserProfile({
+        first_name: data.nome,
+        last_name: data.sobrenome,
+      });
+      
+      // Opcional: também atualizar user_metadata para compatibilidade
+      // se necessário para outras partes do sistema
+      
+      console.log('✅ Perfil atualizado com sucesso!');
+      
+      // Recarregar dados para mostrar as mudanças
+      const updatedProfile = await getUserProfile();
+      if (updatedProfile) {
+        profileForm.reset({
+          nome: updatedProfile.first_name || '',
+          sobrenome: updatedProfile.last_name || '',
+          email: profileForm.getValues().email,
+        });
+      }
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
-      alert('Erro ao atualizar perfil. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -118,17 +141,15 @@ export default function ProfilePage() {
   const onGoalSubmit = async (data: GoalFormData) => {
     setIsLoading(true);
     try {
-      console.log('Atualizando metas:', data);
       await updateUserSettingsComplete({
         daily_goal: data.dailyGoal,
         weekly_goal: data.weeklyGoal,
         work_start_time: data.workStartTime,
         work_end_time: data.workEndTime,
       });
-      alert('Metas atualizadas com sucesso!');
+      console.log('✅ Metas atualizadas com sucesso!');
     } catch (error: any) {
       console.error('Erro ao atualizar metas:', error);
-      alert(`Erro ao atualizar metas: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsLoading(false);
     }
