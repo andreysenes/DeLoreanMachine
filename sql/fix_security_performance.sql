@@ -6,9 +6,17 @@
 -- 1. CORRIGIR SEARCH_PATH DAS FUNCTIONS
 -- ===================================================================
 
--- Recriar função update_updated_at_column com search_path seguro
-DROP FUNCTION IF EXISTS update_updated_at_column();
+-- PASSO 1: Remover triggers primeiro (para evitar dependências)
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
+DROP TRIGGER IF EXISTS update_time_entries_updated_at ON time_entries;
+DROP TRIGGER IF EXISTS update_user_settings_updated_at ON user_settings;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
+-- PASSO 2: Remover functions após remover dependências
+DROP FUNCTION IF EXISTS update_updated_at_column();
+DROP FUNCTION IF EXISTS create_user_settings();
+
+-- PASSO 3: Recriar função update_updated_at_column com search_path seguro
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER 
 LANGUAGE plpgsql
@@ -20,9 +28,7 @@ BEGIN
 END;
 $$;
 
--- Recriar função create_user_settings com search_path seguro
-DROP FUNCTION IF EXISTS create_user_settings();
-
+-- PASSO 4: Recriar função create_user_settings com search_path seguro
 CREATE OR REPLACE FUNCTION create_user_settings()
 RETURNS TRIGGER 
 LANGUAGE plpgsql
@@ -35,12 +41,7 @@ BEGIN
 END;
 $$;
 
--- Recriar triggers (necessário após recriar as functions)
-DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
-DROP TRIGGER IF EXISTS update_time_entries_updated_at ON time_entries;
-DROP TRIGGER IF EXISTS update_user_settings_updated_at ON user_settings;
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
+-- PASSO 5: Recriar triggers com as functions corrigidas
 CREATE TRIGGER update_projects_updated_at 
   BEFORE UPDATE ON projects 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
