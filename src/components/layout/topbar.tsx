@@ -16,8 +16,10 @@ import { ExportButtons } from '@/components/export/export-buttons';
 
 export function Topbar() {
   const [user, setUser] = useState<any>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     const loadUser = async () => {
       try {
         const currentUser = await getCurrentUser();
@@ -68,22 +70,34 @@ export function Topbar() {
         {/* Right section - Actions and Profile */}
         <div className="flex items-center space-x-3">
           {/* Export button - hidden on small screens */}
-          <div className="hidden md:flex">
-            <ExportButtons variant="dropdown" size="sm" />
-          </div>
+          {isMounted && (
+            <div className="hidden md:flex">
+              <ExportButtons variant="dropdown" size="sm" />
+            </div>
+          )}
 
           {/* User dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {getUserInitials(user?.email || '')}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
+          {isMounted ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="relative h-10 w-10 rounded-full"
+                  id="user-menu-trigger"
+                  aria-controls="user-menu-content"
+                >
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {getUserInitials(user?.email || '')}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                className="w-56" 
+                align="end"
+                id="user-menu-content"
+              >
               <div className="flex items-center justify-start gap-2 p-2">
                 <div className="flex flex-col space-y-1 leading-none">
                   <p className="font-medium">{getUserName()}</p>
@@ -105,6 +119,19 @@ export function Topbar() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          ) : (
+            <Button 
+              variant="ghost" 
+              className="relative h-10 w-10 rounded-full"
+              disabled
+            >
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-muted">
+                  US
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          )}
         </div>
       </div>
     </div>

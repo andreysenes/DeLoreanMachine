@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -104,6 +104,29 @@ function SidebarContent({ className }: SidebarContentProps) {
 
 export function Sidebar() {
   const [open, setOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Evita hydration mismatch renderizando o Sheet apenas no cliente
+  if (!isMounted) {
+    return (
+      <>
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-card lg:border-r">
+          <SidebarContent />
+        </div>
+        {/* Placeholder para mobile */}
+        <div className="lg:hidden">
+          <Button variant="outline" size="icon" className="fixed top-4 left-4 z-50" disabled>
+            <Menu className="h-4 w-4" />
+          </Button>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -115,11 +138,21 @@ export function Sidebar() {
       {/* Mobile Sidebar */}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild className="lg:hidden">
-          <Button variant="outline" size="icon" className="fixed top-4 left-4 z-50">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="fixed top-4 left-4 z-50"
+            id="sidebar-mobile-trigger"
+            aria-controls="sidebar-mobile-sheet"
+          >
             <Menu className="h-4 w-4" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
+        <SheetContent 
+          side="left" 
+          className="p-0 w-64"
+          id="sidebar-mobile-sheet"
+        >
           <SidebarContent />
         </SheetContent>
       </Sheet>
