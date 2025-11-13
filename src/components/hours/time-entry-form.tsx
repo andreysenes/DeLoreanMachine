@@ -157,14 +157,61 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
                 name="data"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data</FormLabel>
+                    <FormLabel>Data do Apontamento</FormLabel>
                     <FormControl>
                       <Input
                         type="date"
                         {...field}
                         disabled={isLoading}
+                        className="cursor-pointer"
+                        placeholder="Selecione a data"
                       />
                     </FormControl>
+                    <div className="flex gap-1 mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        onClick={() => {
+                          const yesterday = new Date();
+                          yesterday.setDate(yesterday.getDate() - 1);
+                          field.onChange(format(yesterday, 'yyyy-MM-dd'));
+                        }}
+                        className="text-xs h-6 px-2"
+                      >
+                        Ontem
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        onClick={() => {
+                          field.onChange(format(new Date(), 'yyyy-MM-dd'));
+                        }}
+                        className="text-xs h-6 px-2"
+                      >
+                        Hoje
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        onClick={() => {
+                          const tomorrow = new Date();
+                          tomorrow.setDate(tomorrow.getDate() + 1);
+                          field.onChange(format(tomorrow, 'yyyy-MM-dd'));
+                        }}
+                        className="text-xs h-6 px-2"
+                      >
+                        Amanhã
+                      </Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Use os atalhos acima ou selecione qualquer data no calendário
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
