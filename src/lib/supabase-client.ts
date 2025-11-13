@@ -540,17 +540,44 @@ export const updateUserProfile = async (profileData: Partial<Omit<UserProfile, '
     return;
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-  const { error } = await supabase
-    .from('user_profiles')
-    .upsert({
-      user_id: user.id,
-      ...profileData,
-    });
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert({
+        user_id: user.id,
+        ...profileData,
+      });
 
-  if (error) throw error;
+    if (error) {
+      console.error('👤 Erro detalhado ao atualizar perfil:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+
+      if (error.code === '42P01') {
+        throw new Error('Tabela user_profiles não existe no banco de dados');
+      } else if (error.code === '23503') {
+        throw new Error('Erro de referência - usuário não encontrado');
+      } else if (error.code === '42501') {
+        throw new Error('Permissão negada - verifique as políticas RLS');
+      } else {
+        throw new Error(error.message || 'Erro desconhecido ao atualizar perfil');
+      }
+    }
+  } catch (err: any) {
+    // Re-throw custom errors
+    if (err.message && err.message.includes('Tabela') || err.message.includes('Permissão') || err.message.includes('referência')) {
+      throw err;
+    }
+    // Handle unexpected errors
+    console.error('👤 Erro inesperado:', err);
+    throw new Error('Erro inesperado ao atualizar perfil: ' + (err.message || err));
+  }
 };
 
 // ===============================
@@ -675,17 +702,44 @@ export const updateUserSettingsComplete = async (settingsData: Partial<Omit<User
     return;
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-  const { error } = await supabase
-    .from('user_settings')
-    .upsert({
-      user_id: user.id,
-      ...settingsData,
-    });
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({
+        user_id: user.id,
+        ...settingsData,
+      });
 
-  if (error) throw error;
+    if (error) {
+      console.error('⚙️ Erro detalhado ao atualizar configurações:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+
+      if (error.code === '42P01') {
+        throw new Error('Tabela user_settings não existe no banco de dados');
+      } else if (error.code === '23503') {
+        throw new Error('Erro de referência - usuário não encontrado');
+      } else if (error.code === '42501') {
+        throw new Error('Permissão negada - verifique as políticas RLS');
+      } else {
+        throw new Error(error.message || 'Erro desconhecido ao atualizar configurações');
+      }
+    }
+  } catch (err: any) {
+    // Re-throw custom errors
+    if (err.message && (err.message.includes('Tabela') || err.message.includes('Permissão') || err.message.includes('referência'))) {
+      throw err;
+    }
+    // Handle unexpected errors
+    console.error('⚙️ Erro inesperado:', err);
+    throw new Error('Erro inesperado ao atualizar configurações: ' + (err.message || err));
+  }
 };
 
 // ===============================

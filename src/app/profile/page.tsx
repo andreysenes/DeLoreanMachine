@@ -117,9 +117,6 @@ export default function ProfilePage() {
         last_name: data.sobrenome,
       });
       
-      // Opcional: também atualizar user_metadata para compatibilidade
-      // se necessário para outras partes do sistema
-      
       console.log('✅ Perfil atualizado com sucesso!');
       
       // Recarregar dados para mostrar as mudanças
@@ -131,8 +128,20 @@ export default function ProfilePage() {
           email: profileForm.getValues().email,
         });
       }
-    } catch (error) {
+      
+      // Feedback visual simples - TODO: substituir por toast
+      window.dispatchEvent(new CustomEvent('show-success', { 
+        detail: { message: 'Perfil atualizado com sucesso!' }
+      }));
+      
+    } catch (error: any) {
       console.error('Erro ao atualizar perfil:', error);
+      const errorMessage = error.message || 'Erro desconhecido ao atualizar perfil';
+      
+      // Feedback visual de erro - TODO: substituir por toast  
+      window.dispatchEvent(new CustomEvent('show-error', { 
+        detail: { message: errorMessage }
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -147,9 +156,22 @@ export default function ProfilePage() {
         work_start_time: data.workStartTime,
         work_end_time: data.workEndTime,
       });
+      
       console.log('✅ Metas atualizadas com sucesso!');
+      
+      // Feedback visual simples - TODO: substituir por toast
+      window.dispatchEvent(new CustomEvent('show-success', { 
+        detail: { message: 'Metas atualizadas com sucesso!' }
+      }));
+      
     } catch (error: any) {
       console.error('Erro ao atualizar metas:', error);
+      const errorMessage = error.message || 'Erro desconhecido ao atualizar metas';
+      
+      // Feedback visual de erro - TODO: substituir por toast
+      window.dispatchEvent(new CustomEvent('show-error', { 
+        detail: { message: errorMessage }
+      }));
     } finally {
       setIsLoading(false);
     }

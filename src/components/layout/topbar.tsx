@@ -52,7 +52,7 @@ export function Topbar() {
   };
 
   return (
-    <div className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="h-16 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="flex h-full items-center justify-between px-4 lg:px-6">
         {/* Left section - Greeting */}
         <div className="flex items-center space-x-4">
