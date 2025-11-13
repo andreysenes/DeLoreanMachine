@@ -132,11 +132,12 @@ src/
 
 ## 🎯 Como Usar
 
-### 1. Primeiro Acesso
-- Acesse a página de login
-- Preencha nome, sobrenome e email
-- Clique em "Enviar Magic Link"
-- Use o token de verificação (placeholder)
+### 1. Login/Cadastro
+- **Primeira vez**: Clique em "Cadastrar" e preencha nome, sobrenome e email
+- **Login**: Selecione "Entrar" e insira apenas seu email
+- Clique em "Enviar Magic Link" ou "Criar Conta"
+- Cole o token recebido (no modo mock, qualquer token funciona)
+- Aguarde redirecionamento automático para o dashboard
 
 ### 2. Dashboard
 - Visualize resumo diário e semanal

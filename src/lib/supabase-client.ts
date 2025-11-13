@@ -12,9 +12,9 @@ import {
 // AUTH FUNCTIONS
 // ===============================
 
-export const sendMagicLink = async (email: string) => {
+export const sendMagicLink = async (email: string, isSignup: boolean = true) => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('📧 Mock: Enviando Magic Link para:', email);
+    console.log('📧 Mock: Enviando Magic Link para:', email, isSignup ? '(Cadastro)' : '(Login)');
     return { success: true };
   }
 
@@ -22,7 +22,7 @@ export const sendMagicLink = async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        shouldCreateUser: true,
+        shouldCreateUser: isSignup, // Criar usuário apenas se for cadastro
       },
     });
 

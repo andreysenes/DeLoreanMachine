@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Clock4, Mail, Loader2, Database } from 'lucide-react';
+import { Clock4, Mail, Loader2, UserPlus, LogIn } from 'lucide-react';
 import { sendMagicLink, verifyMagicLink } from '@/lib/supabase-client';
 
 const registerSchema = z.object({
@@ -18,23 +18,37 @@ const registerSchema = z.object({
   email: z.string().email('Email inválido'),
 });
 
+const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+});
+
 const verifySchema = z.object({
   token: z.string().min(1, 'Token é obrigatório'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
 type VerifyFormData = z.infer<typeof verifySchema>;
 
 export function MagicLinkForm() {
-  const [step, setStep] = useState<'register' | 'verify' | 'success'>('register');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [step, setStep] = useState<'form' | 'verify' | 'success'>('form');
   const [userEmail, setUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       nome: '',
       sobrenome: '',
+      email: '',
+    },
+  });
+
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
       email: '',
     },
   });
@@ -48,12 +62,29 @@ export function MagicLinkForm() {
 
   const onRegisterSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
+    setError('');
     try {
-      await sendMagicLink(data.email);
+      await sendMagicLink(data.email, true); // true for signup
       setUserEmail(data.email);
       setStep('verify');
-    } catch (error) {
-      console.error('Erro ao enviar magic link:', error);
+    } catch (error: any) {
+      console.error('Erro ao enviar magic link para cadastro:', error);
+      setError(error.message || 'Erro ao enviar Magic Link. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onLoginSubmit = async (data: LoginFormData) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      await sendMagicLink(data.email, false); // false for login
+      setUserEmail(data.email);
+      setStep('verify');
+    } catch (error: any) {
+      console.error('Erro ao enviar magic link para login:', error);
+      setError(error.message || 'Erro ao fazer login. Verifique se você já possui cadastro.');
     } finally {
       setIsLoading(false);
     }
@@ -61,20 +92,31 @@ export function MagicLinkForm() {
 
   const onVerifySubmit = async (data: VerifyFormData) => {
     setIsLoading(true);
+    setError('');
     try {
       const result = await verifyMagicLink(data.token, userEmail);
       if (result.success) {
         setStep('success');
-        // Redirecionar para dashboard após 3 segundos
+        // Redirecionar para dashboard após 2 segundos
         setTimeout(() => {
           window.location.href = '/dashboard';
-        }, 3000);
+        }, 2000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao verificar token:', error);
+      setError(error.message || 'Token inválido. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setStep('form');
+    setError('');
+    setUserEmail('');
+    registerForm.reset();
+    loginForm.reset();
+    verifyForm.reset();
   };
 
   if (step === 'success') {
@@ -84,7 +126,9 @@ export function MagicLinkForm() {
           <div className="h-12 w-12 rounded-full bg-green-100 mx-auto flex items-center justify-center mb-4">
             <Clock4 className="h-6 w-6 text-green-600" />
           </div>
-          <CardTitle className="text-2xl">Login realizado!</CardTitle>
+          <CardTitle className="text-2xl">
+            {mode === 'register' ? 'Cadastro realizado!' : 'Login realizado!'}
+          </CardTitle>
           <CardDescription>
             Redirecionando para o dashboard...
           </CardDescription>
@@ -102,10 +146,16 @@ export function MagicLinkForm() {
           </div>
           <CardTitle className="text-2xl">Verifique seu email</CardTitle>
           <CardDescription>
-            Enviamos um Magic Link para seu email. Cole o token aqui para continuar.
+            Enviamos um Magic Link para <strong>{userEmail}</strong>. 
+            Cole o token aqui para continuar.
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
           <Form {...verifyForm}>
             <form onSubmit={verifyForm.handleSubmit(onVerifySubmit)} className="space-y-4">
               <FormField
@@ -141,7 +191,7 @@ export function MagicLinkForm() {
         <CardFooter className="flex justify-center">
           <Button
             variant="outline"
-            onClick={() => setStep('register')}
+            onClick={resetForm}
             disabled={isLoading}
           >
             Voltar
@@ -151,7 +201,7 @@ export function MagicLinkForm() {
     );
   }
 
-  // Registration form
+  // Form selection and submission
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
@@ -160,79 +210,185 @@ export function MagicLinkForm() {
         </div>
         <CardTitle className="text-2xl">DeLorean Machine</CardTitle>
         <CardDescription>
-          Sistema de controle de horas. Crie sua conta para começar.
+          Sistema de controle de horas e produtividade
         </CardDescription>
       </CardHeader>
+
       <CardContent>
-        <Form {...registerForm}>
-          <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-            <FormField
-              control={registerForm.control}
-              name="nome"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Seu nome"
-                      type="text"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={registerForm.control}
-              name="sobrenome"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sobrenome</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Seu sobrenome"
-                      type="text"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={registerForm.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="seu@email.com"
-                      type="email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enviando Magic Link...
-                </>
-              ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Enviar Magic Link
-                </>
-              )}
-            </Button>
-          </form>
-        </Form>
+        {/* Mode Toggle */}
+        <div className="flex mb-6 p-1 bg-muted rounded-lg">
+          <Button
+            type="button"
+            variant={mode === 'login' ? 'default' : 'ghost'}
+            className="flex-1"
+            onClick={() => {
+              setMode('login');
+              setError('');
+            }}
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            Entrar
+          </Button>
+          <Button
+            type="button"
+            variant={mode === 'register' ? 'default' : 'ghost'}
+            className="flex-1"
+            onClick={() => {
+              setMode('register');
+              setError('');
+            }}
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Cadastrar
+          </Button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {mode === 'register' ? (
+          <Form {...registerForm}>
+            <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+              <FormField
+                control={registerForm.control}
+                name="nome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Seu nome"
+                        type="text"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={registerForm.control}
+                name="sobrenome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sobrenome</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Seu sobrenome"
+                        type="text"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={registerForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="seu@email.com"
+                        type="email"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Criando conta...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Criar Conta
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+        ) : (
+          <Form {...loginForm}>
+            <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+              <FormField
+                control={loginForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="seu@email.com"
+                        type="email"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando Magic Link...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Enviar Magic Link
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+        )}
       </CardContent>
+
+      <CardFooter className="text-center">
+        <p className="text-sm text-muted-foreground">
+          {mode === 'login' ? (
+            <>
+              Não tem conta?{' '}
+              <Button
+                variant="link"
+                className="p-0 h-auto text-sm"
+                onClick={() => {
+                  setMode('register');
+                  setError('');
+                }}
+              >
+                Cadastre-se aqui
+              </Button>
+            </>
+          ) : (
+            <>
+              Já tem conta?{' '}
+              <Button
+                variant="link"
+                className="p-0 h-auto text-sm"
+                onClick={() => {
+                  setMode('login');
+                  setError('');
+                }}
+              >
+                Faça login
+              </Button>
+            </>
+          )}
+        </p>
+      </CardFooter>
     </Card>
   );
 }
