@@ -95,50 +95,73 @@ export const getUserSettings = async (): Promise<HourGoal> => {
     return mockHourGoal;
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.log('⚙️ Usuário não autenticado, retornando configurações padrão');
+      return mockHourGoal;
+    }
 
-  const { data, error } = await supabase
-    .from('user_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
-
-  if (error && error.code !== 'PGRST116') {
-    throw error;
-  }
-
-  if (!data) {
-    const defaultSettings = {
-      user_id: user.id,
-      daily_goal: 6,
-      weekly_goal: 30,
-      work_start_time: '09:00',
-      work_end_time: '17:00',
-    };
-
-    const { data: newSettings, error: createError } = await supabase
+    const { data, error } = await supabase
       .from('user_settings')
-      .insert(defaultSettings)
-      .select()
+      .select('*')
+      .eq('user_id', user.id)
       .single();
 
-    if (createError) throw createError;
+    // Se tabela não existe ou usuário não tem settings
+    if (error) {
+      if (error.code === 'PGRST116' || error.code === '42P01') {
+        console.log('⚙️ Tabela user_settings não existe ou sem dados, retornando padrão');
+        return mockHourGoal;
+      }
+      console.error('⚙️ Erro ao buscar configurações:', error);
+      return mockHourGoal;
+    }
+
+    if (!data) {
+      // Tentar criar configurações padrão
+      try {
+        const defaultSettings = {
+          user_id: user.id,
+          daily_goal: 6,
+          weekly_goal: 30,
+          work_start_time: '09:00',
+          work_end_time: '17:00',
+        };
+
+        const { data: newSettings, error: createError } = await supabase
+          .from('user_settings')
+          .insert(defaultSettings)
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('⚙️ Erro ao criar configurações padrão:', createError);
+          return mockHourGoal;
+        }
+
+        return {
+          dailyGoal: newSettings.daily_goal,
+          weeklyGoal: newSettings.weekly_goal,
+          workStartTime: newSettings.work_start_time,
+          workEndTime: newSettings.work_end_time,
+        };
+      } catch (createErr) {
+        console.error('⚙️ Falha ao criar configurações:', createErr);
+        return mockHourGoal;
+      }
+    }
 
     return {
-      dailyGoal: newSettings.daily_goal,
-      weeklyGoal: newSettings.weekly_goal,
-      workStartTime: newSettings.work_start_time,
-      workEndTime: newSettings.work_end_time,
+      dailyGoal: data.daily_goal,
+      weeklyGoal: data.weekly_goal,
+      workStartTime: data.work_start_time,
+      workEndTime: data.work_end_time,
     };
+  } catch (err) {
+    console.error('⚙️ Erro geral ao obter configurações:', err);
+    return mockHourGoal;
   }
-
-  return {
-    dailyGoal: data.daily_goal,
-    weeklyGoal: data.weekly_goal,
-    workStartTime: data.work_start_time,
-    workEndTime: data.work_end_time,
-  };
 };
 
 export const updateUserSettings = async (settings: Partial<HourGoal>) => {
@@ -176,17 +199,33 @@ export const getProjects = async (): Promise<Project[]> => {
     return mockProjects;
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.log('📋 Usuário não autenticado, retornando lista vazia');
+      return [];
+    }
 
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return data || [];
+    if (error) {
+      if (error.code === '42P01') {
+        console.log('📋 Tabela projects não existe, retornando lista vazia');
+        return [];
+      }
+      console.error('📋 Erro ao buscar projetos:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('📋 Erro geral ao obter projetos:', err);
+    return [];
+  }
 };
 
 export const createProject = async (projectData: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
@@ -260,17 +299,33 @@ export const getTimeEntries = async (): Promise<TimeEntry[]> => {
     return mockTimeEntries;
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.log('⏰ Usuário não autenticado, retornando lista vazia');
+      return [];
+    }
 
-  const { data, error } = await supabase
-    .from('time_entries')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('data', { ascending: false });
+    const { data, error } = await supabase
+      .from('time_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('data', { ascending: false });
 
-  if (error) throw error;
-  return data || [];
+    if (error) {
+      if (error.code === '42P01') {
+        console.log('⏰ Tabela time_entries não existe, retornando lista vazia');
+        return [];
+      }
+      console.error('⏰ Erro ao buscar apontamentos:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('⏰ Erro geral ao obter apontamentos:', err);
+    return [];
+  }
 };
 
 export const createTimeEntry = async (entryData: Omit<TimeEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {

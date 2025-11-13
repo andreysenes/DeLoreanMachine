@@ -18,17 +18,30 @@ export function SummaryCards() {
       try {
         setIsLoading(true);
         
+        console.log('📊 Carregando dados do dashboard...');
+        
         const [todayData, weekData, settingsData] = await Promise.all([
-          getTodaySummary(),
-          calculateWeeklySummary(),
-          getUserSettings(),
+          getTodaySummary().catch(err => {
+            console.error('Erro ao carregar resumo de hoje:', err);
+            return null;
+          }),
+          calculateWeeklySummary().catch(err => {
+            console.error('Erro ao carregar resumo semanal:', err);
+            return null;
+          }),
+          getUserSettings().catch(err => {
+            console.error('Erro ao carregar configurações:', err);
+            return null;
+          }),
         ]);
+
+        console.log('📊 Dados carregados:', { todayData, weekData, settingsData });
 
         setTodaySummary(todayData);
         setWeekSummary(weekData);
         setUserSettings(settingsData);
       } catch (error) {
-        console.error('Erro ao carregar dados do dashboard:', error);
+        console.error('Erro geral ao carregar dados do dashboard:', error);
       } finally {
         setIsLoading(false);
       }
