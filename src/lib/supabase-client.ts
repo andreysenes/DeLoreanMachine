@@ -106,9 +106,9 @@ export const getUserSettings = async (): Promise<HourGoal> => {
       .from('user_settings')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    // Se tabela não existe ou usuário não tem settings
+    // Se tabela não existe
     if (error) {
       console.log('⚙️ Erro detalhado:', {
         code: error.code,
@@ -117,8 +117,8 @@ export const getUserSettings = async (): Promise<HourGoal> => {
         hint: error.hint
       });
       
-      if (error.code === 'PGRST116' || error.code === '42P01') {
-        console.log('⚙️ Tabela user_settings não existe ou sem dados, retornando padrão');
+      if (error.code === '42P01') {
+        console.log('⚙️ Tabela user_settings não existe, retornando padrão');
         return mockHourGoal;
       }
       console.warn('⚙️ Problema com configurações, usando dados padrão');
