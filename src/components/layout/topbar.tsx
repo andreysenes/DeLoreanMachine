@@ -13,6 +13,7 @@ import {
 import { User } from 'lucide-react';
 import { logout, getCurrentUser } from '@/lib/supabase-client';
 import { ExportButtons } from '@/components/export/export-buttons';
+import { ModeToggle } from '@/components/ui/mode-toggle';
 
 export function Topbar() {
   const [user, setUser] = useState<any>(null);
@@ -75,6 +76,9 @@ export function Topbar() {
               <ExportButtons variant="dropdown" size="sm" />
             </div>
           )}
+
+          {/* Theme toggle */}
+          {isMounted && <ModeToggle />}
 
           {/* User dropdown */}
           {isMounted ? (

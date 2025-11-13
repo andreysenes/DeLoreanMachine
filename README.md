@@ -10,6 +10,9 @@ Sistema completo de controle de horas para freelancers e times, desenvolvido com
 - **Controle de Horas** - Registrar, editar e visualizar apontamentos
 - **Gerenciamento de Projetos** - CRUD completo de projetos e clientes
 - **Perfil de Usuário** - Configurações pessoais e metas de trabalho
+- **Sistema de Cache** - Performance otimizada com cache local
+- **Dark Mode** - Alternância entre tema claro/escuro com persistência
+- **Preferências do Usuário** - Configurações personalizadas salvas no banco
 - **Interface Responsiva** - Funciona em desktop e mobile
 - **Tema Moderno** - Design minimalista com tons neutros
 
