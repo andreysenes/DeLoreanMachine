@@ -10,8 +10,9 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Download, User } from 'lucide-react';
-import { logout, exportToCSV, getCurrentUser } from '@/lib/supabase-client';
+import { User } from 'lucide-react';
+import { logout, getCurrentUser } from '@/lib/supabase-client';
+import { ExportButtons } from '@/components/export/export-buttons';
 
 export function Topbar() {
   const [user, setUser] = useState<any>(null);
@@ -29,9 +30,6 @@ export function Topbar() {
     loadUser();
   }, []);
 
-  const handleExportCSV = () => {
-    exportToCSV([], 'relatorio-horas');
-  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -70,15 +68,9 @@ export function Topbar() {
         {/* Right section - Actions and Profile */}
         <div className="flex items-center space-x-3">
           {/* Export button - hidden on small screens */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleExportCSV}
-            className="hidden md:flex"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Exportar CSV
-          </Button>
+          <div className="hidden md:flex">
+            <ExportButtons variant="dropdown" size="sm" />
+          </div>
 
           {/* User dropdown */}
           <DropdownMenu>
@@ -106,12 +98,6 @@ export function Topbar() {
                   <User className="mr-2 h-4 w-4" />
                   Perfil
                 </a>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="md:hidden" />
-              {/* Mobile-only options */}
-              <DropdownMenuItem onClick={handleExportCSV} className="md:hidden">
-                <Download className="mr-2 h-4 w-4" />
-                Exportar CSV
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="text-red-600">
