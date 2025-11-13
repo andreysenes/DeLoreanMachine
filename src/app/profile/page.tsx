@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -138,9 +138,14 @@ export default function ProfilePage() {
     },
   });
 
-  // Atualizar formulários quando dados chegarem
+  // Refs para armazenar valores anteriores e evitar resets desnecessários
+  const prevProfileDataRef = useRef<any>(null);
+  const prevSettingsDataRef = useRef<any>(null);
+  const prevPreferencesDataRef = useRef<any>(null);
+
+  // Atualizar formulários quando dados chegarem (apenas se mudaram)
   useEffect(() => {
-    if (profileData) {
+    if (profileData && profileData !== prevProfileDataRef.current) {
       const { user, profile } = profileData;
       
       if (user && profile) {
@@ -156,11 +161,13 @@ export default function ProfilePage() {
           email: user.email || '',
         });
       }
+      
+      prevProfileDataRef.current = profileData;
     }
   }, [profileData, profileForm]);
 
   useEffect(() => {
-    if (settingsData) {
+    if (settingsData && settingsData !== prevSettingsDataRef.current) {
       goalForm.reset({
         dailyGoal: settingsData.daily_goal,
         weeklyGoal: settingsData.weekly_goal,
@@ -173,11 +180,13 @@ export default function ProfilePage() {
         hour_format: settingsData.hour_format || '24h',
         date_format: settingsData.date_format || 'dd/MM/yyyy',
       });
+      
+      prevSettingsDataRef.current = settingsData;
     }
   }, [settingsData, goalForm, systemSettingsForm]);
 
   useEffect(() => {
-    if (preferencesData) {
+    if (preferencesData && preferencesData !== prevPreferencesDataRef.current) {
       preferencesForm.reset({
         theme: preferencesData.theme || 'system',
         language: preferencesData.language || 'pt-BR',
@@ -189,6 +198,8 @@ export default function ProfilePage() {
         show_decimal_hours: preferencesData.show_decimal_hours ?? true,
         export_format: preferencesData.export_format || 'csv',
       });
+      
+      prevPreferencesDataRef.current = preferencesData;
     }
   }, [preferencesData, preferencesForm]);
 

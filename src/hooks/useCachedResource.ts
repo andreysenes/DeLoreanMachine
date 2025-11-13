@@ -46,20 +46,23 @@ export function useCachedResource<T>(
   const [error, setError] = useState<Error | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // Ref para evitar múltiplas requests simultâneas
+  // Refs para evitar múltiplas requests e loops infinitos
   const fetchingRef = useRef(false);
-  const mountedRef = useRef(false);
+  const initializedRef = useRef(false);
+  const userIdRef = useRef<string | null>(null);
 
   // Carregar userId uma vez
   useEffect(() => {
     getCurrentUser().then(user => {
-      setUserId(user?.id || null);
+      const newUserId = user?.id || null;
+      setUserId(newUserId);
+      userIdRef.current = newUserId;
     }).catch(console.warn);
   }, []);
 
-  // Função para buscar dados
+  // Função para buscar dados - sem userId nas dependências para evitar loops
   const fetchData = useCallback(async (showValidating = true) => {
-    if (!enabled || fetchingRef.current) return;
+    if (!enabled || fetchingRef.current || !userIdRef.current) return;
     
     fetchingRef.current = true;
     if (showValidating) setIsValidating(true);
@@ -72,9 +75,9 @@ export function useCachedResource<T>(
       setData(result);
       setIsStale(false);
       
-      // Atualizar cache
-      if (userId !== null) {
-        setCachedData(userId, key, result, { version, maxAge });
+      // Atualizar cache usando ref para evitar dependência circular
+      if (userIdRef.current) {
+        setCachedData(userIdRef.current, key, result, { version, maxAge });
       }
       
       console.debug(`[useCachedResource] Fetched ${key} successfully`);
@@ -87,11 +90,11 @@ export function useCachedResource<T>(
       setIsValidating(false);
       fetchingRef.current = false;
     }
-  }, [key, fetcher, enabled, userId, version, maxAge]);
+  }, [key, fetcher, enabled, version, maxAge]);
 
   // Carregar dados do cache imediatamente + buscar dados atualizados
   useEffect(() => {
-    if (!enabled || userId === null) return;
+    if (!enabled || userId === null || initializedRef.current) return;
 
     // Primeira tentativa: carregar do cache
     const cachedData = getCachedData<T>(userId, key, { version, maxAge });
@@ -116,8 +119,8 @@ export function useCachedResource<T>(
       fetchData(false);
     }
 
-    mountedRef.current = true;
-  }, [key, userId, enabled, fetchData, revalidateOnMount, version, maxAge]);
+    initializedRef.current = true;
+  }, [key, userId, enabled, revalidateOnMount, version, maxAge, fetchData]);
 
   // Função para atualizar dados manualmente (mutate)
   const mutate = useCallback((newData?: T) => {
@@ -126,15 +129,15 @@ export function useCachedResource<T>(
       setIsStale(false);
       setError(null);
       
-      // Atualizar cache
-      if (userId !== null) {
-        setCachedData(userId, key, newData, { version, maxAge });
+      // Atualizar cache usando ref para evitar dependência circular
+      if (userIdRef.current) {
+        setCachedData(userIdRef.current, key, newData, { version, maxAge });
       }
     } else {
       // Se chamado sem parâmetros, revalida
       fetchData(true);
     }
-  }, [userId, key, version, maxAge, fetchData]);
+  }, [key, version, maxAge, fetchData]);
 
   // Função para forçar revalidação
   const revalidate = useCallback(async () => {
