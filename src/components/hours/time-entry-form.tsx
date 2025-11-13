@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { CalendarIcon, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, addDays, subDays, startOfToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getProjects, createTimeEntry, updateTimeEntry } from '@/lib/supabase-client';
 import { Project, TimeEntry } from '@/types/db';
@@ -54,7 +54,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      data: format(new Date(), 'yyyy-MM-dd'),
+      data: format(startOfToday(), 'yyyy-MM-dd'),
       project_id: '',
       funcao: '',
       descricao: '',
@@ -78,7 +78,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
         });
       } else {
         form.reset({
-          data: format(new Date(), 'yyyy-MM-dd'),
+          data: format(startOfToday(), 'yyyy-MM-dd'),
           project_id: '',
           funcao: '',
           descricao: '',
@@ -174,8 +174,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
                         size="sm"
                         disabled={isLoading}
                         onClick={() => {
-                          const yesterday = new Date();
-                          yesterday.setDate(yesterday.getDate() - 1);
+                          const yesterday = subDays(startOfToday(), 1);
                           field.onChange(format(yesterday, 'yyyy-MM-dd'));
                         }}
                         className="text-xs h-6 px-2"
@@ -188,7 +187,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
                         size="sm"
                         disabled={isLoading}
                         onClick={() => {
-                          field.onChange(format(new Date(), 'yyyy-MM-dd'));
+                          field.onChange(format(startOfToday(), 'yyyy-MM-dd'));
                         }}
                         className="text-xs h-6 px-2"
                       >
@@ -200,8 +199,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
                         size="sm"
                         disabled={isLoading}
                         onClick={() => {
-                          const tomorrow = new Date();
-                          tomorrow.setDate(tomorrow.getDate() + 1);
+                          const tomorrow = addDays(startOfToday(), 1);
                           field.onChange(format(tomorrow, 'yyyy-MM-dd'));
                         }}
                         className="text-xs h-6 px-2"
