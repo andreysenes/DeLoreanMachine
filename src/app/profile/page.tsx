@@ -14,17 +14,18 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { User, Clock, Settings, LogOut, Save, Loader2 } from 'lucide-react';
+import { User, Clock, Settings, LogOut, Save, Loader2, RefreshCw } from 'lucide-react';
 import { 
-  getCurrentUser, 
-  getUserProfile, 
   updateUserProfile,
-  getUserPreferences,
   updateUserPreferences,
-  getUserSettingsComplete, 
   updateUserSettingsComplete, 
   logout 
 } from '@/lib/supabase-client';
+import { 
+  useCachedUserProfile, 
+  useCachedUserSettings, 
+  useCachedUserPreferences 
+} from '@/hooks/useCachedResource';
 
 const profileSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -64,7 +65,35 @@ type SystemSettingsFormData = z.infer<typeof systemSettingsSchema>;
 
 export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Hooks de cache para cada tipo de dados
+  const {
+    data: profileData,
+    isLoading: isLoadingProfile,
+    isValidating: isValidatingProfile,
+    isStale: isProfileStale,
+    mutate: mutateProfile,
+  } = useCachedUserProfile();
+
+  const {
+    data: settingsData,
+    isLoading: isLoadingSettings,
+    isValidating: isValidatingSettings,
+    isStale: isSettingsStale,
+    mutate: mutateSettings,
+  } = useCachedUserSettings();
+
+  const {
+    data: preferencesData,
+    isLoading: isLoadingPreferences,
+    isValidating: isValidatingPreferences,
+    isStale: isPreferencesStale,
+    mutate: mutatePreferences,
+  } = useCachedUserPreferences();
+
+  // Estado de loading geral
+  const isLoadingData = isLoadingProfile || isLoadingSettings || isLoadingPreferences;
+  const isValidatingAny = isValidatingProfile || isValidatingSettings || isValidatingPreferences;
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -109,72 +138,59 @@ export default function ProfilePage() {
     },
   });
 
+  // Atualizar formulários quando dados chegarem
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        setIsLoadingData(true);
-        
-        // Carregar dados do usuário do banco
-        const user = await getCurrentUser();
-        const profile = await getUserProfile();
-        
-        if (user && profile) {
-          // Usar dados do banco (user_profiles)
-          profileForm.reset({
-            nome: profile.first_name || '',
-            sobrenome: profile.last_name || '',
-            email: user.email || '',
-          });
-        } else if (user) {
-          // Fallback: usar user_metadata se não há perfil ainda
-          profileForm.reset({
-            nome: (user.user_metadata as any)?.nome || '',
-            sobrenome: (user.user_metadata as any)?.sobrenome || '',
-            email: user.email || '',
-          });
-        }
-
-        // Carregar configurações/metas
-        const settings = await getUserSettingsComplete();
-        if (settings) {
-          goalForm.reset({
-            dailyGoal: settings.daily_goal,
-            weeklyGoal: settings.weekly_goal,
-            workStartTime: settings.work_start_time,
-            workEndTime: settings.work_end_time,
-          });
-
-          systemSettingsForm.reset({
-            timezone: settings.timezone || 'America/Sao_Paulo',
-            hour_format: settings.hour_format || '24h',
-            date_format: settings.date_format || 'dd/MM/yyyy',
-          });
-        }
-
-        // Carregar preferências do usuário
-        const preferences = await getUserPreferences();
-        if (preferences) {
-          preferencesForm.reset({
-            theme: preferences.theme || 'system',
-            language: preferences.language || 'pt-BR',
-            week_start_day: preferences.week_start_day || 1,
-            notifications_email: preferences.notifications_email || true,
-            notifications_push: preferences.notifications_push || true,
-            notifications_reminders: preferences.notifications_reminders || true,
-            auto_track: preferences.auto_track || false,
-            show_decimal_hours: preferences.show_decimal_hours || true,
-            export_format: preferences.export_format || 'csv',
-          });
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dados do usuário:', error);
-      } finally {
-        setIsLoadingData(false);
+    if (profileData) {
+      const { user, profile } = profileData;
+      
+      if (user && profile) {
+        profileForm.reset({
+          nome: profile.first_name || '',
+          sobrenome: profile.last_name || '',
+          email: user.email || '',
+        });
+      } else if (user) {
+        profileForm.reset({
+          nome: (user.user_metadata as any)?.nome || '',
+          sobrenome: (user.user_metadata as any)?.sobrenome || '',
+          email: user.email || '',
+        });
       }
-    };
+    }
+  }, [profileData, profileForm]);
 
-    loadUserData();
-  }, [profileForm, goalForm]);
+  useEffect(() => {
+    if (settingsData) {
+      goalForm.reset({
+        dailyGoal: settingsData.daily_goal,
+        weeklyGoal: settingsData.weekly_goal,
+        workStartTime: settingsData.work_start_time,
+        workEndTime: settingsData.work_end_time,
+      });
+
+      systemSettingsForm.reset({
+        timezone: settingsData.timezone || 'America/Sao_Paulo',
+        hour_format: settingsData.hour_format || '24h',
+        date_format: settingsData.date_format || 'dd/MM/yyyy',
+      });
+    }
+  }, [settingsData, goalForm, systemSettingsForm]);
+
+  useEffect(() => {
+    if (preferencesData) {
+      preferencesForm.reset({
+        theme: preferencesData.theme || 'system',
+        language: preferencesData.language || 'pt-BR',
+        week_start_day: preferencesData.week_start_day || 1,
+        notifications_email: preferencesData.notifications_email ?? true,
+        notifications_push: preferencesData.notifications_push ?? true,
+        notifications_reminders: preferencesData.notifications_reminders ?? true,
+        auto_track: preferencesData.auto_track ?? false,
+        show_decimal_hours: preferencesData.show_decimal_hours ?? true,
+        export_format: preferencesData.export_format || 'csv',
+      });
+    }
+  }, [preferencesData, preferencesForm]);
 
   const onProfileSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
@@ -186,17 +202,20 @@ export default function ProfilePage() {
       
       console.log('✅ Perfil atualizado com sucesso!');
       
-      // Recarregar dados para mostrar as mudanças
-      const updatedProfile = await getUserProfile();
-      if (updatedProfile) {
-        profileForm.reset({
-          nome: updatedProfile.first_name || '',
-          sobrenome: updatedProfile.last_name || '',
-          email: profileForm.getValues().email,
-        });
+      // Atualizar o cache local com os dados atualizados
+      if (profileData && profileData.profile) {
+        const updatedProfileData = {
+          ...profileData,
+          profile: {
+            ...profileData.profile,
+            first_name: data.nome,
+            last_name: data.sobrenome,
+          }
+        };
+        mutateProfile(updatedProfileData);
       }
       
-      // Feedback visual simples - TODO: substituir por toast
+      // Feedback visual simples
       window.dispatchEvent(new CustomEvent('show-success', { 
         detail: { message: 'Perfil atualizado com sucesso!' }
       }));
@@ -205,7 +224,6 @@ export default function ProfilePage() {
       console.error('Erro ao atualizar perfil:', error);
       const errorMessage = error.message || 'Erro desconhecido ao atualizar perfil';
       
-      // Feedback visual de erro - TODO: substituir por toast  
       window.dispatchEvent(new CustomEvent('show-error', { 
         detail: { message: errorMessage }
       }));
@@ -226,7 +244,19 @@ export default function ProfilePage() {
       
       console.log('✅ Metas atualizadas com sucesso!');
       
-      // Feedback visual simples - TODO: substituir por toast
+      // Atualizar o cache local com os dados atualizados
+      if (settingsData) {
+        const updatedSettingsData = {
+          ...settingsData,
+          daily_goal: data.dailyGoal,
+          weekly_goal: data.weeklyGoal,
+          work_start_time: data.workStartTime,
+          work_end_time: data.workEndTime,
+        };
+        mutateSettings(updatedSettingsData);
+      }
+      
+      // Feedback visual simples
       window.dispatchEvent(new CustomEvent('show-success', { 
         detail: { message: 'Metas atualizadas com sucesso!' }
       }));
@@ -235,7 +265,6 @@ export default function ProfilePage() {
       console.error('Erro ao atualizar metas:', error);
       const errorMessage = error.message || 'Erro desconhecido ao atualizar metas';
       
-      // Feedback visual de erro - TODO: substituir por toast
       window.dispatchEvent(new CustomEvent('show-error', { 
         detail: { message: errorMessage }
       }));
@@ -250,6 +279,15 @@ export default function ProfilePage() {
       await updateUserPreferences(data);
       
       console.log('✅ Preferências atualizadas com sucesso!');
+      
+      // Atualizar o cache local com os dados atualizados
+      if (preferencesData) {
+        const updatedPreferencesData = {
+          ...preferencesData,
+          ...data,
+        };
+        mutatePreferences(updatedPreferencesData);
+      }
       
       // Feedback visual simples
       window.dispatchEvent(new CustomEvent('show-success', { 
@@ -274,6 +312,15 @@ export default function ProfilePage() {
       await updateUserSettingsComplete(data);
       
       console.log('✅ Configurações do sistema atualizadas com sucesso!');
+      
+      // Atualizar o cache local com os dados atualizados
+      if (settingsData) {
+        const updatedSettingsData = {
+          ...settingsData,
+          ...data,
+        };
+        mutateSettings(updatedSettingsData);
+      }
       
       // Feedback visual simples
       window.dispatchEvent(new CustomEvent('show-success', { 
