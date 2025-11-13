@@ -12,38 +12,31 @@ import {
 // AUTH FUNCTIONS
 // ===============================
 
-export const sendMagicLink = async (email: string, isSignup: boolean = true, autoClose: boolean = false) => {
+export const sendVerificationCode = async (email: string, isSignup: boolean = true) => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('📧 Mock: Enviando Magic Link para:', email, isSignup ? '(Cadastro)' : '(Login)', autoClose ? '(Auto-fechar)' : '');
+    console.log('📧 Mock: Enviando código de verificação para:', email, isSignup ? '(Cadastro)' : '(Login)');
     return { success: true };
   }
 
   try {
-    // Construir URL de callback com parâmetro autoclose se necessário
-    let callbackUrl = `${window.location.origin}/callback`;
-    if (autoClose) {
-      callbackUrl += '?autoclose=true';
-    }
-
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: isSignup, // Criar usuário apenas se for cadastro
-        emailRedirectTo: callbackUrl, // Redirecionar para página de callback
       },
     });
 
     if (error) throw error;
     return { success: true };
   } catch (error) {
-    console.error('Erro ao enviar magic link:', error);
+    console.error('Erro ao enviar código de verificação:', error);
     throw error;
   }
 };
 
-export const verifyMagicLink = async (token: string, email: string) => {
+export const verifyCode = async (email: string, code: string) => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('🔐 Mock: Verificando token:', token, 'para email:', email);
+    console.log('🔐 Mock: Verificando código:', code, 'para email:', email);
     return { 
       success: true, 
       user: { id: 'mock-user-id', email, user_metadata: { nome: 'Usuário Mock' } }
@@ -53,14 +46,14 @@ export const verifyMagicLink = async (token: string, email: string) => {
   try {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
-      token,
+      token: code,
       type: 'email',
     });
 
     if (error) throw error;
     return { success: true, user: data.user };
   } catch (error) {
-    console.error('Erro ao verificar magic link:', error);
+    console.error('Erro ao verificar código:', error);
     throw error;
   }
 };

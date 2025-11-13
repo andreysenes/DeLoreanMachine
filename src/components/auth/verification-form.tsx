@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Clock4, Mail, Loader2, UserPlus, LogIn, ExternalLink } from 'lucide-react';
-import { sendMagicLink, verifyMagicLink } from '@/lib/supabase-client';
+import { Clock4, Mail, Loader2, UserPlus, LogIn, Shield } from 'lucide-react';
+import { sendVerificationCode, verifyCode } from '@/lib/supabase-client';
 
 const registerSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -23,50 +22,19 @@ const loginSchema = z.object({
 });
 
 const verifySchema = z.object({
-  token: z.string().min(1, 'Token é obrigatório'),
+  code: z.string().length(4, 'Código deve ter 4 dígitos').regex(/^\d{4}$/, 'Código deve conter apenas números'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 type LoginFormData = z.infer<typeof loginSchema>;
 type VerifyFormData = z.infer<typeof verifySchema>;
 
-export function MagicLinkForm() {
+export function VerificationForm() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [step, setStep] = useState<'form' | 'sent' | 'success'>('form');
+  const [step, setStep] = useState<'form' | 'sent' | 'verify' | 'success'>('form');
   const [userEmail, setUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Listener para postMessage da janela de callback
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Verificar origem por segurança
-      if (event.origin !== window.location.origin) {
-        return;
-      }
-
-      if (event.data.type === 'AUTH_SUCCESS') {
-        console.log('✅ Autenticação bem-sucedida via Magic Link!');
-        setStep('success');
-        // Redirecionar para dashboard após 1 segundo
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1000);
-      } else if (event.data.type === 'AUTH_ERROR') {
-        console.error('❌ Erro na autenticação:', event.data.error);
-        setError(event.data.error);
-        setStep('form');
-        setIsLoading(false);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, []);
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -87,7 +55,7 @@ export function MagicLinkForm() {
   const verifyForm = useForm<VerifyFormData>({
     resolver: zodResolver(verifySchema),
     defaultValues: {
-      token: '',
+      code: '',
     },
   });
 
@@ -95,12 +63,12 @@ export function MagicLinkForm() {
     setIsLoading(true);
     setError('');
     try {
-      await sendMagicLink(data.email, true, true); // (email, isSignup=true, autoClose=true)
+      await sendVerificationCode(data.email, true); // true for signup
       setUserEmail(data.email);
       setStep('sent');
     } catch (error: any) {
-      console.error('Erro ao enviar magic link para cadastro:', error);
-      setError(error.message || 'Erro ao enviar Magic Link. Tente novamente.');
+      console.error('Erro ao enviar código para cadastro:', error);
+      setError(error.message || 'Erro ao enviar código de verificação. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -110,11 +78,11 @@ export function MagicLinkForm() {
     setIsLoading(true);
     setError('');
     try {
-      await sendMagicLink(data.email, false, true); // (email, isSignup=false, autoClose=true)
+      await sendVerificationCode(data.email, false); // false for login
       setUserEmail(data.email);
       setStep('sent');
     } catch (error: any) {
-      console.error('Erro ao enviar magic link para login:', error);
+      console.error('Erro ao enviar código para login:', error);
       setError(error.message || 'Erro ao fazer login. Verifique se você já possui cadastro.');
     } finally {
       setIsLoading(false);
@@ -125,7 +93,7 @@ export function MagicLinkForm() {
     setIsLoading(true);
     setError('');
     try {
-      const result = await verifyMagicLink(data.token, userEmail);
+      const result = await verifyCode(userEmail, data.code);
       if (result.success) {
         setStep('success');
         // Redirecionar para dashboard após 2 segundos
@@ -134,8 +102,8 @@ export function MagicLinkForm() {
         }, 2000);
       }
     } catch (error: any) {
-      console.error('Erro ao verificar token:', error);
-      setError(error.message || 'Token inválido. Tente novamente.');
+      console.error('Erro ao verificar código:', error);
+      setError(error.message || 'Código inválido. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -148,6 +116,18 @@ export function MagicLinkForm() {
     registerForm.reset();
     loginForm.reset();
     verifyForm.reset();
+  };
+
+  const resendCode = async () => {
+    setIsLoading(true);
+    try {
+      await sendVerificationCode(userEmail, mode === 'register');
+      setError('');
+    } catch (error: any) {
+      setError(error.message || 'Erro ao reenviar código.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (step === 'success') {
@@ -173,13 +153,11 @@ export function MagicLinkForm() {
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="text-center">
           <div className="h-12 w-12 rounded-full bg-blue-100 mx-auto flex items-center justify-center mb-4">
-            <Mail className="h-6 w-6 text-blue-600" />
+            <Shield className="h-6 w-6 text-blue-600" />
           </div>
-          <CardTitle className="text-2xl">Email enviado!</CardTitle>
+          <CardTitle className="text-2xl">Código enviado!</CardTitle>
           <CardDescription>
-            Enviamos um Magic Link para <strong>{userEmail}</strong>. 
-            <br />
-            <strong>Clique no link</strong> para fazer login automaticamente.
+            Enviamos um código de 4 dígitos para <strong>{userEmail}</strong>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -188,20 +166,62 @@ export function MagicLinkForm() {
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
-          <div className="text-center space-y-4">
-            <p className="text-sm text-gray-600">
-              📧 Verifique sua caixa de entrada (e spam) e clique no link para entrar no sistema.
+          
+          <Form {...verifyForm}>
+            <form onSubmit={verifyForm.handleSubmit(onVerifySubmit)} className="space-y-4">
+              <FormField
+                control={verifyForm.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código de verificação</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="0000"
+                        type="text"
+                        maxLength={4}
+                        className="text-center text-lg tracking-widest"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Verificar Código
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+          
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600 mb-2">
+              Não recebeu o código?
             </p>
-            <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
-              <p className="text-xs text-blue-700">
-                ✨ <strong>Dica:</strong> O link te levará diretamente ao dashboard - não é necessário inserir token!
-              </p>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resendCode}
+              disabled={isLoading}
+            >
+              Reenviar código
+            </Button>
           </div>
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={resetForm}
           >
             Voltar para Login
@@ -360,12 +380,12 @@ export function MagicLinkForm() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enviando Magic Link...
+                    Enviando código...
                   </>
                 ) : (
                   <>
                     <Mail className="mr-2 h-4 w-4" />
-                    Enviar Magic Link
+                    Enviar Código
                   </>
                 )}
               </Button>
