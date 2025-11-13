@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,10 +10,25 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Download, Database, User } from 'lucide-react';
-import { mockUser, connectToSupabase, exportToCSV, logout } from '@/lib/supabase-placeholders';
+import { Download, User } from 'lucide-react';
+import { logout, exportToCSV, getCurrentUser } from '@/lib/supabase-client';
 
 export function Topbar() {
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      }
+    };
+    
+    loadUser();
+  }, []);
+
   const handleExportCSV = () => {
     exportToCSV([], 'relatorio-horas');
   };
@@ -24,8 +40,15 @@ export function Topbar() {
     return 'Boa noite';
   };
 
-  const getUserInitials = (nome: string, sobrenome: string) => {
-    return `${nome.charAt(0)}${sobrenome.charAt(0)}`.toUpperCase();
+  const getUserInitials = (email: string) => {
+    if (!email) return 'US';
+    const name = email.split('@')[0];
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getUserName = () => {
+    if (!user) return 'Usuário';
+    return user.user_metadata?.nome || user.email?.split('@')[0] || 'Usuário';
   };
 
   return (
@@ -36,7 +59,7 @@ export function Topbar() {
           <div className="lg:hidden" /> {/* Espaço para o botão do menu mobile */}
           <div className="flex flex-col lg:ml-0 ml-12">
             <h1 className="text-lg font-semibold">
-              {getGreeting()}, {mockUser.nome}!
+              {getGreeting()}, {getUserName()}!
             </h1>
             <p className="text-sm text-muted-foreground">
               Gerencie seu tempo de forma produtiva
@@ -57,24 +80,13 @@ export function Topbar() {
             Exportar CSV
           </Button>
 
-          {/* Supabase connection button - hidden on small screens */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={connectToSupabase}
-            className="hidden md:flex"
-          >
-            <Database className="mr-2 h-4 w-4" />
-            Conectar Supabase
-          </Button>
-
           {/* User dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    {getUserInitials(mockUser.nome, mockUser.sobrenome)}
+                    {getUserInitials(user?.email || '')}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -82,9 +94,9 @@ export function Topbar() {
             <DropdownMenuContent className="w-56" align="end">
               <div className="flex items-center justify-start gap-2 p-2">
                 <div className="flex flex-col space-y-1 leading-none">
-                  <p className="font-medium">{mockUser.nome} {mockUser.sobrenome}</p>
+                  <p className="font-medium">{getUserName()}</p>
                   <p className="w-[200px] truncate text-sm text-muted-foreground">
-                    {mockUser.email}
+                    {user?.email || 'Carregando...'}
                   </p>
                 </div>
               </div>
@@ -100,10 +112,6 @@ export function Topbar() {
               <DropdownMenuItem onClick={handleExportCSV} className="md:hidden">
                 <Download className="mr-2 h-4 w-4" />
                 Exportar CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={connectToSupabase} className="md:hidden">
-                <Database className="mr-2 h-4 w-4" />
-                Conectar Supabase
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="text-red-600">

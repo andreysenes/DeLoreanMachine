@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Clock4, Mail, Loader2, Database } from 'lucide-react';
-import { sendMagicLink, verifyMagicLink, connectToSupabase } from '@/lib/supabase-placeholders';
+import { sendMagicLink, verifyMagicLink } from '@/lib/supabase-client';
 
 const registerSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -27,6 +27,7 @@ type VerifyFormData = z.infer<typeof verifySchema>;
 
 export function MagicLinkForm() {
   const [step, setStep] = useState<'register' | 'verify' | 'success'>('register');
+  const [userEmail, setUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const registerForm = useForm<RegisterFormData>({
@@ -49,6 +50,7 @@ export function MagicLinkForm() {
     setIsLoading(true);
     try {
       await sendMagicLink(data.email);
+      setUserEmail(data.email);
       setStep('verify');
     } catch (error) {
       console.error('Erro ao enviar magic link:', error);
@@ -60,7 +62,7 @@ export function MagicLinkForm() {
   const onVerifySubmit = async (data: VerifyFormData) => {
     setIsLoading(true);
     try {
-      const result = await verifyMagicLink(data.token);
+      const result = await verifyMagicLink(data.token, userEmail);
       if (result.success) {
         setStep('success');
         // Redirecionar para dashboard após 3 segundos
@@ -231,16 +233,6 @@ export function MagicLinkForm() {
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <Button
-          variant="outline"
-          onClick={connectToSupabase}
-          className="w-full"
-        >
-          <Database className="mr-2 h-4 w-4" />
-          Conectar ao Supabase
-        </Button>
-      </CardFooter>
     </Card>
   );
 }

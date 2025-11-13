@@ -1,23 +1,49 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Clock, ExternalLink } from 'lucide-react';
-import { mockTimeEntries, mockProjects } from '@/lib/supabase-placeholders';
+import { getTimeEntries, getProjects } from '@/lib/supabase-client';
+import { TimeEntry, Project } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function RecentEntries() {
-  const recentEntries = mockTimeEntries.slice(0, 5); // Pegar as 5 mais recentes
+  const [recentEntries, setRecentEntries] = useState<TimeEntry[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        
+        const [entriesData, projectsData] = await Promise.all([
+          getTimeEntries(),
+          getProjects(),
+        ]);
+
+        setRecentEntries(entriesData.slice(0, 5)); // Pegar as 5 mais recentes
+        setProjects(projectsData);
+      } catch (error) {
+        console.error('Erro ao carregar apontamentos recentes:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const getProjectName = (projectId: string) => {
-    const project = mockProjects.find(p => p.id === projectId);
+    const project = projects.find(p => p.id === projectId);
     return project?.nome || 'Projeto não encontrado';
   };
 
   const getProjectClient = (projectId: string) => {
-    const project = mockProjects.find(p => p.id === projectId);
+    const project = projects.find(p => p.id === projectId);
     return project?.cliente || '';
   };
 
@@ -32,6 +58,36 @@ export function RecentEntries() {
     return colors[funcao] || 'bg-gray-100 text-gray-800';
   };
 
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-5 w-40 bg-muted rounded animate-pulse mb-2" />
+              <div className="h-4 w-56 bg-muted rounded animate-pulse" />
+            </div>
+            <div className="h-9 w-32 bg-muted rounded animate-pulse" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-start justify-between p-4 border rounded-lg">
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                  <div className="h-3 w-24 bg-muted rounded animate-pulse" />
+                  <div className="h-3 w-48 bg-muted rounded animate-pulse" />
+                </div>
+                <div className="h-4 w-12 bg-muted rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -42,9 +98,11 @@ export function RecentEntries() {
               Seus últimos registros de horas trabalhadas
             </CardDescription>
           </div>
-          <Button size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Apontamento
+          <Button size="sm" asChild>
+            <a href="/hours">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Apontamento
+            </a>
           </Button>
         </div>
       </CardHeader>
@@ -87,8 +145,10 @@ export function RecentEntries() {
                     <Clock className="mr-1 h-4 w-4" />
                     {entry.horas}h
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <ExternalLink className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href="/hours">
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
                   </Button>
                 </div>
               </div>
@@ -100,9 +160,11 @@ export function RecentEntries() {
               <p className="text-sm text-muted-foreground">
                 Comece registrando suas primeiras horas de trabalho.
               </p>
-              <Button className="mt-4">
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Apontamento
+              <Button className="mt-4" asChild>
+                <a href="/hours">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Apontamento
+                </a>
               </Button>
             </div>
           )}
@@ -110,9 +172,11 @@ export function RecentEntries() {
         
         {recentEntries.length > 0 && (
           <div className="mt-4 pt-4 border-t">
-            <Button variant="outline" className="w-full">
-              Ver Todos os Apontamentos
-              <ExternalLink className="ml-2 h-4 w-4" />
+            <Button variant="outline" className="w-full" asChild>
+              <a href="/hours">
+                Ver Todos os Apontamentos
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </a>
             </Button>
           </div>
         )}

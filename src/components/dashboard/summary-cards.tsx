@@ -1,17 +1,64 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Clock, Target, TrendingUp, Calendar } from 'lucide-react';
-import { getTodaySummary, getCurrentWeekSummary, mockHourGoal } from '@/lib/supabase-placeholders';
+import { getTodaySummary, calculateWeeklySummary, getUserSettings } from '@/lib/supabase-client';
+import { DailySummary, WeeklySummary, HourGoal } from '@/types/db';
 
 export function SummaryCards() {
-  const todaySummary = getTodaySummary();
-  const weekSummary = getCurrentWeekSummary();
-  const goal = mockHourGoal;
+  const [todaySummary, setTodaySummary] = useState<DailySummary | null>(null);
+  const [weekSummary, setWeekSummary] = useState<WeeklySummary | null>(null);
+  const [userSettings, setUserSettings] = useState<HourGoal | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const todayProgress = (todaySummary.totalHours / goal.dailyGoal) * 100;
-  const weekProgress = (weekSummary.totalHours / goal.weeklyGoal) * 100;
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        
+        const [todayData, weekData, settingsData] = await Promise.all([
+          getTodaySummary(),
+          calculateWeeklySummary(),
+          getUserSettings(),
+        ]);
+
+        setTodaySummary(todayData);
+        setWeekSummary(weekData);
+        setUserSettings(settingsData);
+      } catch (error) {
+        console.error('Erro ao carregar dados do dashboard:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  if (isLoading || !todaySummary || !weekSummary || !userSettings) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+              <div className="h-4 w-4 bg-muted rounded animate-pulse" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 w-16 bg-muted rounded animate-pulse mb-2" />
+              <div className="h-3 w-24 bg-muted rounded animate-pulse mb-2" />
+              <div className="h-2 w-full bg-muted rounded animate-pulse" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const todayProgress = (todaySummary.totalHours / userSettings.dailyGoal) * 100;
+  const weekProgress = (weekSummary.totalHours / userSettings.weeklyGoal) * 100;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -26,7 +73,7 @@ export function SummaryCards() {
             {todaySummary.totalHours.toFixed(1)}h
           </div>
           <p className="text-xs text-muted-foreground">
-            Meta: {goal.dailyGoal}h
+            Meta: {userSettings.dailyGoal}h
           </p>
           <Progress value={todayProgress} className="mt-2" />
         </CardContent>
@@ -43,7 +90,7 @@ export function SummaryCards() {
             {weekSummary.totalHours.toFixed(1)}h
           </div>
           <p className="text-xs text-muted-foreground">
-            Meta: {goal.weeklyGoal}h
+            Meta: {userSettings.weeklyGoal}h
           </p>
           <Progress value={weekProgress} className="mt-2" />
         </CardContent>
@@ -56,9 +103,9 @@ export function SummaryCards() {
           <Target className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{goal.dailyGoal}h</div>
+          <div className="text-2xl font-bold">{userSettings.dailyGoal}h</div>
           <p className="text-xs text-muted-foreground">
-            {goal.workStartTime} - {goal.workEndTime}
+            {userSettings.workStartTime} - {userSettings.workEndTime}
           </p>
           <div className="text-xs text-muted-foreground mt-2">
             Progresso: {todayProgress.toFixed(0)}%
