@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,8 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { User, Clock, Settings, LogOut, Save } from 'lucide-react';
-import { mockUser, mockHourGoal, logout } from '@/lib/supabase-placeholders';
+import { User, Clock, Settings, LogOut, Save, Loader2 } from 'lucide-react';
+import { getCurrentUser, getUserSettings, updateUserSettings, logout } from '@/lib/supabase-client';
+import { mockUser } from '@/lib/supabase-placeholders';
 
 const profileSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -34,35 +35,70 @@ type GoalFormData = z.infer<typeof goalSchema>;
 
 export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      nome: mockUser.nome,
-      sobrenome: mockUser.sobrenome,
-      email: mockUser.email,
+      nome: '',
+      sobrenome: '',
+      email: '',
     },
   });
 
   const goalForm = useForm<GoalFormData>({
     resolver: zodResolver(goalSchema),
     defaultValues: {
-      dailyGoal: mockHourGoal.dailyGoal,
-      weeklyGoal: mockHourGoal.weeklyGoal,
-      workStartTime: mockHourGoal.workStartTime,
-      workEndTime: mockHourGoal.workEndTime,
+      dailyGoal: 6,
+      weeklyGoal: 30,
+      workStartTime: '09:00',
+      workEndTime: '17:00',
     },
   });
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setIsLoadingData(true);
+        
+        // Carregar dados do usuário
+        const user = await getCurrentUser();
+        if (user) {
+          profileForm.reset({
+            nome: (user.user_metadata as any)?.nome || mockUser.nome,
+            sobrenome: (user.user_metadata as any)?.sobrenome || mockUser.sobrenome,
+            email: user.email || mockUser.email,
+          });
+        }
+
+        // Carregar configurações/metas
+        const settings = await getUserSettings();
+        goalForm.reset({
+          dailyGoal: settings.dailyGoal,
+          weeklyGoal: settings.weeklyGoal,
+          workStartTime: settings.workStartTime,
+          workEndTime: settings.workEndTime,
+        });
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    loadUserData();
+  }, [profileForm, goalForm]);
 
   const onProfileSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
     try {
       console.log('Atualizando perfil:', data);
-      // Simular salvamento
+      // Por enquanto apenas simular - futuramente implementar updateUserProfile
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert('Perfil atualizado com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
+      alert('Erro ao atualizar perfil. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -72,15 +108,26 @@ export default function ProfilePage() {
     setIsLoading(true);
     try {
       console.log('Atualizando metas:', data);
-      // Simular salvamento
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await updateUserSettings(data);
       alert('Metas atualizadas com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar metas:', error);
+      alert(`Erro ao atualizar metas: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isLoadingData) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Carregando dados do usuário...</span>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
