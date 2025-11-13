@@ -224,6 +224,8 @@ export function MagicLinkForm() {
             onClick={() => {
               setMode('login');
               setError('');
+              registerForm.reset();
+              loginForm.reset();
             }}
           >
             <LogIn className="mr-2 h-4 w-4" />
@@ -236,6 +238,8 @@ export function MagicLinkForm() {
             onClick={() => {
               setMode('register');
               setError('');
+              registerForm.reset();
+              loginForm.reset();
             }}
           >
             <UserPlus className="mr-2 h-4 w-4" />
