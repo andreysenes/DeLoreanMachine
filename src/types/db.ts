@@ -50,5 +50,51 @@ export interface HourGoal {
   workEndTime: string;
 }
 
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  phone?: string;
+  role?: string;
+  avatar_url?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UserPreferences {
+  id: string;
+  user_id: string;
+  theme: 'light' | 'dark' | 'system';
+  language: 'pt-BR' | 'en-US' | 'es-ES';
+  week_start_day: number;
+  notifications_email: boolean;
+  notifications_push: boolean;
+  notifications_reminders: boolean;
+  auto_track: boolean;
+  show_decimal_hours: boolean;
+  export_format: 'csv' | 'pdf' | 'xlsx';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UserSettings {
+  id: string;
+  user_id: string;
+  daily_goal: number;
+  weekly_goal: number;
+  work_start_time: string;
+  work_end_time: string;
+  timezone: string;
+  hour_format: '12h' | '24h';
+  date_format: 'dd/MM/yyyy' | 'MM/dd/yyyy' | 'yyyy-MM-dd';
+  created_at?: string;
+  updated_at?: string;
+}
+
 export type TimeEntryFormData = Omit<TimeEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type ProjectFormData = Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>;

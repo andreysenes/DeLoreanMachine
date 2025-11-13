@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { User, Project, TimeEntry, WeeklySummary, DailySummary, HourGoal } from '@/types/db';
+import { User, Project, TimeEntry, WeeklySummary, DailySummary, HourGoal, UserProfile, UserPreferences, UserSettings } from '@/types/db';
 import { 
   mockTimeEntries, 
   mockProjects, 
@@ -482,6 +482,210 @@ export const getTodaySummary = async (): Promise<DailySummary> => {
 
   const entries = await getTimeEntries();
   return calculateDailySummary(new Date(), entries);
+};
+
+// ===============================
+// USER PROFILE FUNCTIONS
+// ===============================
+
+export const getUserProfile = async (): Promise<UserProfile | null> => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('👤 Mock: Retornando perfil mock');
+    return {
+      id: 'mock-profile-id',
+      user_id: 'mock-user-id',
+      first_name: 'Usuário',
+      last_name: 'Mock',
+      full_name: 'Usuário Mock',
+      role: 'freelancer',
+    };
+  }
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.log('👤 Usuário não autenticado');
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.log('👤 Erro ao buscar perfil:', {
+        code: error.code,
+        message: error.message
+      });
+      
+      if (error.code === '42P01') {
+        console.log('👤 Tabela user_profiles não existe');
+        return null;
+      }
+      return null;
+    }
+
+    return data;
+  } catch (err: any) {
+    console.log('👤 Erro geral ao obter perfil:', err.message || err);
+    return null;
+  }
+};
+
+export const updateUserProfile = async (profileData: Partial<Omit<UserProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('👤 Mock: Atualizando perfil:', profileData);
+    return;
+  }
+
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Usuário não autenticado');
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .upsert({
+      user_id: user.id,
+      ...profileData,
+    });
+
+  if (error) throw error;
+};
+
+// ===============================
+// USER PREFERENCES FUNCTIONS
+// ===============================
+
+export const getUserPreferences = async (): Promise<UserPreferences | null> => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⚙️ Mock: Retornando preferências mock');
+    return {
+      id: 'mock-preferences-id',
+      user_id: 'mock-user-id',
+      theme: 'system',
+      language: 'pt-BR',
+      week_start_day: 1,
+      notifications_email: true,
+      notifications_push: true,
+      notifications_reminders: true,
+      auto_track: false,
+      show_decimal_hours: true,
+      export_format: 'csv',
+    };
+  }
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.log('⚙️ Usuário não autenticado');
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.log('⚙️ Erro ao buscar preferências:', {
+        code: error.code,
+        message: error.message
+      });
+      
+      if (error.code === '42P01') {
+        console.log('⚙️ Tabela user_preferences não existe');
+        return null;
+      }
+      return null;
+    }
+
+    return data;
+  } catch (err: any) {
+    console.log('⚙️ Erro geral ao obter preferências:', err.message || err);
+    return null;
+  }
+};
+
+export const updateUserPreferences = async (preferencesData: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⚙️ Mock: Atualizando preferências:', preferencesData);
+    return;
+  }
+
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Usuário não autenticado');
+
+  const { error } = await supabase
+    .from('user_preferences')
+    .upsert({
+      user_id: user.id,
+      ...preferencesData,
+    });
+
+  if (error) throw error;
+};
+
+// ===============================
+// COMPLETE USER SETTINGS (ENHANCED)
+// ===============================
+
+export const getUserSettingsComplete = async (): Promise<UserSettings | null> => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⚙️ Mock: Retornando configurações completas mock');
+    return {
+      id: 'mock-settings-id',
+      user_id: 'mock-user-id',
+      daily_goal: 6,
+      weekly_goal: 30,
+      work_start_time: '09:00',
+      work_end_time: '17:00',
+      timezone: 'America/Sao_Paulo',
+      hour_format: '24h',
+      date_format: 'dd/MM/yyyy',
+    };
+  }
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.log('⚙️ Erro ao buscar configurações completas:', error);
+      return null;
+    }
+
+    return data;
+  } catch (err: any) {
+    console.log('⚙️ Erro geral ao obter configurações completas:', err.message || err);
+    return null;
+  }
+};
+
+export const updateUserSettingsComplete = async (settingsData: Partial<Omit<UserSettings, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⚙️ Mock: Atualizando configurações completas:', settingsData);
+    return;
+  }
+
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Usuário não autenticado');
+
+  const { error } = await supabase
+    .from('user_settings')
+    .upsert({
+      user_id: user.id,
+      ...settingsData,
+    });
+
+  if (error) throw error;
 };
 
 // ===============================

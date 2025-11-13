@@ -14,7 +14,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { User, Clock, Settings, LogOut, Save, Loader2 } from 'lucide-react';
-import { getCurrentUser, getUserSettings, updateUserSettings, logout } from '@/lib/supabase-client';
+import { 
+  getCurrentUser, 
+  getUserProfile, 
+  updateUserProfile,
+  getUserPreferences,
+  updateUserPreferences,
+  getUserSettingsComplete, 
+  updateUserSettingsComplete, 
+  logout 
+} from '@/lib/supabase-client';
 import { mockUser } from '@/lib/supabase-placeholders';
 
 const profileSchema = z.object({
@@ -72,13 +81,15 @@ export default function ProfilePage() {
         }
 
         // Carregar configurações/metas
-        const settings = await getUserSettings();
-        goalForm.reset({
-          dailyGoal: settings.dailyGoal,
-          weeklyGoal: settings.weeklyGoal,
-          workStartTime: settings.workStartTime,
-          workEndTime: settings.workEndTime,
-        });
+        const settings = await getUserSettingsComplete();
+        if (settings) {
+          goalForm.reset({
+            dailyGoal: settings.daily_goal,
+            weeklyGoal: settings.weekly_goal,
+            workStartTime: settings.work_start_time,
+            workEndTime: settings.work_end_time,
+          });
+        }
       } catch (error) {
         console.error('Erro ao carregar dados do usuário:', error);
       } finally {
@@ -108,7 +119,12 @@ export default function ProfilePage() {
     setIsLoading(true);
     try {
       console.log('Atualizando metas:', data);
-      await updateUserSettings(data);
+      await updateUserSettingsComplete({
+        daily_goal: data.dailyGoal,
+        weekly_goal: data.weeklyGoal,
+        work_start_time: data.workStartTime,
+        work_end_time: data.workEndTime,
+      });
       alert('Metas atualizadas com sucesso!');
     } catch (error: any) {
       console.error('Erro ao atualizar metas:', error);
