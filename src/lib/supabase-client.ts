@@ -1,11 +1,23 @@
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 import { User, Project, TimeEntry, WeeklySummary, DailySummary, HourGoal } from '@/types/db';
+import { 
+  mockTimeEntries, 
+  mockProjects, 
+  mockHourGoal,
+  getTodaySummary as getMockTodaySummary,
+  getCurrentWeekSummary as getMockWeekSummary
+} from './supabase-placeholders';
 
 // ===============================
 // AUTH FUNCTIONS
 // ===============================
 
 export const sendMagicLink = async (email: string) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('📧 Mock: Enviando Magic Link para:', email);
+    return { success: true };
+  }
+
   try {
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -15,7 +27,6 @@ export const sendMagicLink = async (email: string) => {
     });
 
     if (error) throw error;
-
     return { success: true };
   } catch (error) {
     console.error('Erro ao enviar magic link:', error);
@@ -24,6 +35,14 @@ export const sendMagicLink = async (email: string) => {
 };
 
 export const verifyMagicLink = async (token: string, email: string) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('🔐 Mock: Verificando token:', token, 'para email:', email);
+    return { 
+      success: true, 
+      user: { id: 'mock-user-id', email, user_metadata: { nome: 'Usuário Mock' } }
+    };
+  }
+
   try {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
@@ -32,7 +51,6 @@ export const verifyMagicLink = async (token: string, email: string) => {
     });
 
     if (error) throw error;
-
     return { success: true, user: data.user };
   } catch (error) {
     console.error('Erro ao verificar magic link:', error);
@@ -41,15 +59,28 @@ export const verifyMagicLink = async (token: string, email: string) => {
 };
 
 export const getCurrentUser = async () => {
+  if (!isSupabaseConfigured || !supabase) {
+    return { 
+      id: 'mock-user-id', 
+      email: 'usuario@mock.com',
+      user_metadata: { nome: 'Usuário Mock' }
+    };
+  }
+
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 };
 
 export const logout = async () => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('🚪 Mock: Fazendo logout...');
+    window.location.href = '/login';
+    return;
+  }
+
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
   
-  // Redirecionar para login
   window.location.href = '/login';
 };
 
@@ -58,6 +89,11 @@ export const logout = async () => {
 // ===============================
 
 export const getUserSettings = async (): Promise<HourGoal> => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⚙️ Mock: Retornando configurações mock');
+    return mockHourGoal;
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -67,12 +103,11 @@ export const getUserSettings = async (): Promise<HourGoal> => {
     .eq('user_id', user.id)
     .single();
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+  if (error && error.code !== 'PGRST116') {
     throw error;
   }
 
   if (!data) {
-    // Criar configurações padrão se não existir
     const defaultSettings = {
       user_id: user.id,
       daily_goal: 6,
@@ -106,6 +141,11 @@ export const getUserSettings = async (): Promise<HourGoal> => {
 };
 
 export const updateUserSettings = async (settings: Partial<HourGoal>) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⚙️ Mock: Atualizando configurações:', settings);
+    return;
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -130,6 +170,11 @@ export const updateUserSettings = async (settings: Partial<HourGoal>) => {
 // ===============================
 
 export const getProjects = async (): Promise<Project[]> => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('📋 Mock: Retornando projetos mock');
+    return mockProjects;
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -144,6 +189,11 @@ export const getProjects = async (): Promise<Project[]> => {
 };
 
 export const createProject = async (projectData: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('📋 Mock: Criando projeto:', projectData.nome);
+    return { id: 'mock-project-id', ...projectData, user_id: 'mock-user-id' };
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -161,6 +211,11 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'user_id' 
 };
 
 export const updateProject = async (id: string, projectData: Partial<Project>) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('📋 Mock: Atualizando projeto:', id, projectData);
+    return { id, ...projectData };
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -177,6 +232,11 @@ export const updateProject = async (id: string, projectData: Partial<Project>) =
 };
 
 export const deleteProject = async (id: string) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('📋 Mock: Deletando projeto:', id);
+    return;
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -194,6 +254,11 @@ export const deleteProject = async (id: string) => {
 // ===============================
 
 export const getTimeEntries = async (): Promise<TimeEntry[]> => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⏰ Mock: Retornando apontamentos mock');
+    return mockTimeEntries;
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -208,6 +273,11 @@ export const getTimeEntries = async (): Promise<TimeEntry[]> => {
 };
 
 export const createTimeEntry = async (entryData: Omit<TimeEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⏰ Mock: Criando apontamento:', entryData);
+    return { id: 'mock-entry-id', ...entryData, user_id: 'mock-user-id' };
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -225,6 +295,11 @@ export const createTimeEntry = async (entryData: Omit<TimeEntry, 'id' | 'user_id
 };
 
 export const updateTimeEntry = async (id: string, entryData: Partial<TimeEntry>) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⏰ Mock: Atualizando apontamento:', id, entryData);
+    return { id, ...entryData };
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -241,6 +316,11 @@ export const updateTimeEntry = async (id: string, entryData: Partial<TimeEntry>)
 };
 
 export const deleteTimeEntry = async (id: string) => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('⏰ Mock: Deletando apontamento:', id);
+    return;
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -270,9 +350,14 @@ export const calculateDailySummary = (date: Date, entries: TimeEntry[]): DailySu
 };
 
 export const calculateWeeklySummary = async (): Promise<WeeklySummary> => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('📊 Mock: Retornando resumo semanal mock');
+    return getMockWeekSummary();
+  }
+
   const today = new Date();
   const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+  weekStart.setDate(today.getDate() - today.getDay());
   
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
@@ -311,6 +396,11 @@ export const calculateWeeklySummary = async (): Promise<WeeklySummary> => {
 };
 
 export const getTodaySummary = async (): Promise<DailySummary> => {
+  if (!isSupabaseConfigured || !supabase) {
+    console.log('📊 Mock: Retornando resumo diário mock');
+    return getMockTodaySummary();
+  }
+
   const entries = await getTimeEntries();
   return calculateDailySummary(new Date(), entries);
 };
@@ -320,13 +410,19 @@ export const getTodaySummary = async (): Promise<DailySummary> => {
 // ===============================
 
 export const exportToCSV = (data: any[], filename: string) => {
-  const headers = Object.keys(data[0] || {});
+  console.log('📄 Exportando CSV:', filename, 'com', data.length, 'registros');
+  
+  if (!data || data.length === 0) {
+    console.warn('Nenhum dado para exportar');
+    return;
+  }
+
+  const headers = Object.keys(data[0]);
   const csvContent = [
     headers.join(','),
     ...data.map(row => 
       headers.map(header => {
         const value = row[header];
-        // Escapar valores que contêm vírgula ou quebra de linha
         if (typeof value === 'string' && (value.includes(',') || value.includes('\n'))) {
           return `"${value.replace(/"/g, '""')}"`;
         }

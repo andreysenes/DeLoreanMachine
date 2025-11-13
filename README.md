@@ -53,7 +53,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima
 SUPABASE_SECRET_KEY=sua_chave_secreta
 ```
 
-4. **Execute o projeto**
+4. **Configure o Supabase (IMPORTANTE)**
+
+⚠️ **As credenciais em `.env.local` são placeholders e inválidas.**
+
+Para conectar com Supabase real:
+
+a) Acesse [https://supabase.com/dashboard](https://supabase.com/dashboard)
+b) Crie um novo projeto
+c) Vá em **Settings > API**
+d) Copie a **URL** e **anon public key**
+e) Atualize `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://seuprojetoid.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_publica_anonima
+SUPABASE_SECRET_KEY=sua_chave_secreta
+SUPABASE_SERVICE_ROLE=sua_service_role_key
+```
+
+f) Execute o script SQL: copie e cole o conteúdo de `sql/create_tables.sql` no **SQL Editor** do Supabase
+
+**Modo Mock (Desenvolvimento):** Se não configurar o Supabase, o sistema usa dados de exemplo automaticamente.
+
+5. **Execute o projeto**
 ```bash
 npm run dev
 ```
