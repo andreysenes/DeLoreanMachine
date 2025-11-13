@@ -110,11 +110,18 @@ export const getUserSettings = async (): Promise<HourGoal> => {
 
     // Se tabela não existe ou usuário não tem settings
     if (error) {
+      console.log('⚙️ Erro detalhado:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      
       if (error.code === 'PGRST116' || error.code === '42P01') {
         console.log('⚙️ Tabela user_settings não existe ou sem dados, retornando padrão');
         return mockHourGoal;
       }
-      console.error('⚙️ Erro ao buscar configurações:', error);
+      console.warn('⚙️ Problema com configurações, usando dados padrão');
       return mockHourGoal;
     }
 
@@ -136,7 +143,10 @@ export const getUserSettings = async (): Promise<HourGoal> => {
           .single();
 
         if (createError) {
-          console.error('⚙️ Erro ao criar configurações padrão:', createError);
+          console.log('⚙️ Erro ao criar configurações padrão:', {
+            code: createError.code,
+            message: createError.message
+          });
           return mockHourGoal;
         }
 
@@ -146,8 +156,8 @@ export const getUserSettings = async (): Promise<HourGoal> => {
           workStartTime: newSettings.work_start_time,
           workEndTime: newSettings.work_end_time,
         };
-      } catch (createErr) {
-        console.error('⚙️ Falha ao criar configurações:', createErr);
+      } catch (createErr: any) {
+        console.log('⚙️ Falha ao criar configurações:', createErr.message || createErr);
         return mockHourGoal;
       }
     }
@@ -158,8 +168,8 @@ export const getUserSettings = async (): Promise<HourGoal> => {
       workStartTime: data.work_start_time,
       workEndTime: data.work_end_time,
     };
-  } catch (err) {
-    console.error('⚙️ Erro geral ao obter configurações:', err);
+  } catch (err: any) {
+    console.log('⚙️ Erro geral ao obter configurações:', err.message || err);
     return mockHourGoal;
   }
 };
@@ -213,17 +223,24 @@ export const getProjects = async (): Promise<Project[]> => {
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.log('📋 Erro detalhado ao buscar projetos:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      
       if (error.code === '42P01') {
         console.log('📋 Tabela projects não existe, retornando lista vazia');
         return [];
       }
-      console.error('📋 Erro ao buscar projetos:', error);
+      console.warn('📋 Problema ao buscar projetos, retornando lista vazia');
       return [];
     }
 
     return data || [];
-  } catch (err) {
-    console.error('📋 Erro geral ao obter projetos:', err);
+  } catch (err: any) {
+    console.log('📋 Erro geral ao obter projetos:', err.message || err);
     return [];
   }
 };
@@ -313,17 +330,24 @@ export const getTimeEntries = async (): Promise<TimeEntry[]> => {
       .order('data', { ascending: false });
 
     if (error) {
+      console.log('⏰ Erro detalhado ao buscar apontamentos:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      
       if (error.code === '42P01') {
         console.log('⏰ Tabela time_entries não existe, retornando lista vazia');
         return [];
       }
-      console.error('⏰ Erro ao buscar apontamentos:', error);
+      console.warn('⏰ Problema ao buscar apontamentos, retornando lista vazia');
       return [];
     }
 
     return data || [];
-  } catch (err) {
-    console.error('⏰ Erro geral ao obter apontamentos:', err);
+  } catch (err: any) {
+    console.log('⏰ Erro geral ao obter apontamentos:', err.message || err);
     return [];
   }
 };
