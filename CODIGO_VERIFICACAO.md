@@ -2,18 +2,18 @@
 
 ## 🎯 **Nova Funcionalidade**
 
-O sistema agora usa **código de verificação de 4 dígitos** enviado por email em vez de Magic Links, proporcionando uma experiência mais simples e controlada.
+O sistema agora usa **código de verificação de 6 a 8 dígitos** enviado por email em vez de Magic Links, proporcionando uma experiência mais simples e controlada.
 
 ## ⚡ **Fluxo de Autenticação**
 
 ### 1. **Usuário solicita acesso**
 - Preenche email (e dados para cadastro)
-- Sistema envia código de 4 dígitos por email
+- Sistema envia código de 6 a 8 dígitos por email
 
 ### 2. **Usuário insere código**
 - Código recebido por email
 - Interface centralizada com campo específico
-- Validação automática: apenas números, 4 dígitos
+- Validação automática: apenas números, 6 a 8 dígitos
 
 ### 3. **Verificação e acesso**
 - Sistema valida código com Supabase
@@ -26,7 +26,7 @@ O sistema agora usa **código de verificação de 4 dígitos** enviado por email
 
 #### 1. **`src/lib/supabase-client.ts`**
 ```typescript
-// Enviar código de 4 dígitos
+// Enviar código de verificação (6-8 dígitos)
 export const sendVerificationCode = async (email: string, isSignup: boolean)
 
 // Verificar código inserido pelo usuário
@@ -35,7 +35,7 @@ export const verifyCode = async (email: string, code: string)
 
 #### 2. **`src/components/auth/verification-form.tsx`**
 - **Interface unificada**: Login e cadastro
-- **Campo de código**: 4 dígitos, centralizado, tracking amplo
+- **Campo de código**: 6-8 dígitos, centralizado, tracking amplo
 - **Estados**: formulário → código enviado → verificação → sucesso
 - **Funcionalidades**: reenviar código, voltar ao formulário
 
@@ -47,8 +47,9 @@ export const verifyCode = async (email: string, code: string)
 ```typescript
 const verifySchema = z.object({
   code: z.string()
-    .length(4, 'Código deve ter 4 dígitos')
-    .regex(/^\d{4}$/, 'Código deve conter apenas números'),
+    .min(6, 'Código deve ter pelo menos 6 dígitos')
+    .max(8, 'Código deve ter no máximo 8 dígitos')
+    .regex(/^\d{6,8}$/, 'Código deve conter apenas números'),
 });
 ```
 
@@ -64,7 +65,7 @@ const verifySchema = z.object({
 #### **2. Código Enviado**
 - Ícone Shield (🛡️)
 - Título: "Código enviado!"
-- Campo: Input centrado, 4 dígitos, espaçamento amplo
+- Campo: Input centrado, 6-8 dígitos, espaçamento amplo
 - Ações: "Verificar Código", "Reenviar código", "Voltar para Login"
 
 #### **3. Sucesso**
@@ -81,7 +82,7 @@ const verifySchema = z.object({
 
 ### ✅ **Segurança Mantida**
 - **Código temporário**: Expira automaticamente
-- **Validação robusta**: Apenas 4 dígitos numéricos
+- **Validação robusta**: Apenas 6-8 dígitos numéricos
 - **Supabase OTP**: Mesma base de segurança
 
 ### ✅ **Compatibilidade**
@@ -95,7 +96,7 @@ const verifySchema = z.object({
 1. Usuário vai para `/login`
 2. Clica em "Entrar", digita email
 3. Clica "Enviar Código"
-4. **Email recebido** com código de 4 dígitos
+4. **Email recebido** com código de 6-8 dígitos
 5. Insere código no campo centralizado
 6. Clica "Verificar Código"
 7. **Sucesso** → dashboard
@@ -104,7 +105,7 @@ const verifySchema = z.object({
 1. Usuário vai para `/login`
 2. Clica em "Cadastrar", preenche dados
 3. Clica "Criar Conta"  
-4. **Email recebido** com código de 4 dígitos
+4. **Email recebido** com código de 6-8 dígitos
 5. Insere código no campo centralizado
 6. Clica "Verificar Código"
 7. **Sucesso** → dashboard (conta criada)
@@ -120,17 +121,17 @@ const verifySchema = z.object({
 ### **Campo de Código**
 ```tsx
 <Input
-  placeholder="0000"
+  placeholder="000000"
   type="text"
-  maxLength={4}
-  className="text-center text-lg tracking-widest"
+  maxLength={8}
+  className="text-center text-lg tracking-wide"
   // Estilo: centralizado, fonte grande, espaçamento amplo
 />
 ```
 
 ### **Validação em Tempo Real**
-- ✅ **4 dígitos**: Exatamente 4 caracteres
-- ✅ **Apenas números**: Regex `/^\d{4}$/`
+- ✅ **6-8 dígitos**: 6 a 8 caracteres numéricos
+- ✅ **Apenas números**: Regex `/^\d{6,8}$/`
 - ❌ **Códigos inválidos**: Feedback imediato
 
 ### **Estados de Loading**

@@ -22,7 +22,7 @@ const loginSchema = z.object({
 });
 
 const verifySchema = z.object({
-  code: z.string().length(4, 'Código deve ter 4 dígitos').regex(/^\d{4}$/, 'Código deve conter apenas números'),
+  code: z.string().min(6, 'Código deve ter pelo menos 6 dígitos').max(8, 'Código deve ter no máximo 8 dígitos').regex(/^\d{6,8}$/, 'Código deve conter apenas números'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -157,7 +157,7 @@ export function VerificationForm() {
           </div>
           <CardTitle className="text-2xl">Código enviado!</CardTitle>
           <CardDescription>
-            Enviamos um código de 4 dígitos para <strong>{userEmail}</strong>
+            Enviamos um código de verificação para <strong>{userEmail}</strong>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -174,13 +174,13 @@ export function VerificationForm() {
                 name="code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Código de verificação</FormLabel>
+                    <FormLabel>Código de verificação (6 a 8 dígitos)</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="0000"
+                        placeholder="000000"
                         type="text"
-                        maxLength={4}
-                        className="text-center text-lg tracking-widest"
+                        maxLength={8}
+                        className="text-center text-lg tracking-wide"
                         disabled={isLoading}
                         {...field}
                       />
