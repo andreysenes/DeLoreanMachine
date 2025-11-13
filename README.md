@@ -53,28 +53,26 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima
 SUPABASE_SECRET_KEY=sua_chave_secreta
 ```
 
-4. **Configure o Supabase (IMPORTANTE)**
+4. **Configure o Supabase**
 
-⚠️ **As credenciais em `.env.local` são placeholders e inválidas.**
+⚠️ **IMPORTANTE: Sistema está em MODO MOCK**
 
-Para conectar com Supabase real:
+**Para usar dados reais do Supabase:**
+📋 **Siga o guia completo**: [`SUPABASE_SETUP.md`](SUPABASE_SETUP.md)
 
-a) Acesse [https://supabase.com/dashboard](https://supabase.com/dashboard)
-b) Crie um novo projeto
-c) Vá em **Settings > API**
-d) Copie a **URL** e **anon public key**
-e) Atualize `.env.local`:
+**Resumo rápido:**
+- Crie projeto no [Supabase Dashboard](https://supabase.com/dashboard)
+- Copie credenciais reais para `.env.local`
+- Execute script SQL (`sql/create_tables.sql`)
+- Configure autenticação Magic Link
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://seuprojetoid.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_publica_anonima
-SUPABASE_SECRET_KEY=sua_chave_secreta
-SUPABASE_SERVICE_ROLE=sua_service_role_key
-```
+**Modo Mock (Atual):** Sistema funciona perfeitamente com dados de exemplo - ideal para testes e desenvolvimento.
 
-f) Execute o script SQL: copie e cole o conteúdo de `sql/create_tables.sql` no **SQL Editor** do Supabase
-
-**Modo Mock (Desenvolvimento):** Se não configurar o Supabase, o sistema usa dados de exemplo automaticamente.
+**Benefícios do Supabase Real:**
+- 📧 Magic Links reais por email
+- 💾 Dados persistentes no banco
+- 👥 Multi-usuário com segurança
+- 🔒 Row Level Security (RLS)
 
 5. **Execute o projeto**
 ```bash
