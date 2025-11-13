@@ -706,12 +706,39 @@ export const updateUserSettingsComplete = async (settingsData: Partial<Omit<User
     const user = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { error } = await supabase
+    // Primeiro verificar se o registro já existe
+    const { data: existingSettings, error: selectError } = await supabase
       .from('user_settings')
-      .upsert({
-        user_id: user.id,
-        ...settingsData,
-      });
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error('⚙️ Erro ao verificar configurações existentes:', selectError);
+      throw new Error('Erro ao verificar configurações existentes');
+    }
+
+    let error;
+
+    if (existingSettings) {
+      // Atualizar registro existente
+      const { error: updateError } = await supabase
+        .from('user_settings')
+        .update(settingsData)
+        .eq('user_id', user.id);
+
+      error = updateError;
+    } else {
+      // Criar novo registro
+      const { error: insertError } = await supabase
+        .from('user_settings')
+        .insert({
+          user_id: user.id,
+          ...settingsData,
+        });
+
+      error = insertError;
+    }
 
     if (error) {
       console.error('⚙️ Erro detalhado ao atualizar configurações:', {
@@ -727,13 +754,15 @@ export const updateUserSettingsComplete = async (settingsData: Partial<Omit<User
         throw new Error('Erro de referência - usuário não encontrado');
       } else if (error.code === '42501') {
         throw new Error('Permissão negada - verifique as políticas RLS');
+      } else if (error.code === '23505') {
+        throw new Error('Conflito: configurações já existem para este usuário');
       } else {
         throw new Error(error.message || 'Erro desconhecido ao atualizar configurações');
       }
     }
   } catch (err: any) {
     // Re-throw custom errors
-    if (err.message && (err.message.includes('Tabela') || err.message.includes('Permissão') || err.message.includes('referência'))) {
+    if (err.message && (err.message.includes('Tabela') || err.message.includes('Permissão') || err.message.includes('referência') || err.message.includes('Conflito'))) {
       throw err;
     }
     // Handle unexpected errors
