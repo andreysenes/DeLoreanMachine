@@ -60,39 +60,31 @@ npm run dev
 
 Abra [http://localhost:3000](http://localhost:3000) no seu navegador.
 
-## 🗄️ Estrutura do Banco de Dados (Supabase)
+## 🗄️ Configuração do Banco de Dados (Supabase)
 
-### Tabelas Necessárias
+### 1. Executar SQL no Supabase
 
-```sql
--- Usuários (gerenciado pelo Supabase Auth)
--- auth.users
+Execute o arquivo `sql/create_tables.sql` no SQL Editor do Supabase Dashboard:
 
--- Projetos
-CREATE TABLE projects (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  nome TEXT NOT NULL,
-  cliente TEXT NOT NULL,
-  status TEXT CHECK (status IN ('ativo', 'inativo')) DEFAULT 'ativo',
-  descricao TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+**Tabelas criadas:**
+- `projects` - Projetos e clientes
+- `time_entries` - Apontamentos de horas  
+- `user_settings` - Configurações do usuário
 
--- Apontamentos de Horas
-CREATE TABLE time_entries (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-  funcao TEXT NOT NULL,
-  descricao TEXT,
-  horas DECIMAL(4,2) NOT NULL,
-  data DATE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+**Features incluídas:**
+- ✅ Row Level Security (RLS) 
+- ✅ Triggers automáticos para `updated_at`
+- ✅ Configurações padrão criadas automaticamente
+- ✅ Índices para performance
+- ✅ Validações de dados
+
+### 2. Configurar Autenticação
+
+No Supabase Dashboard:
+1. Acesse **Authentication > Settings**
+2. Habilite **Email confirmations**
+3. Configure **Magic Link** como método de login
+4. Adicione seu domínio em **Site URL**
 
 ## 📁 Estrutura do Projeto
 
