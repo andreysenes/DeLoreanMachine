@@ -32,7 +32,7 @@ type VerifyFormData = z.infer<typeof verifySchema>;
 
 export function MagicLinkForm() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [step, setStep] = useState<'form' | 'verify' | 'success'>('form');
+  const [step, setStep] = useState<'form' | 'sent' | 'success'>('form');
   const [userEmail, setUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -66,7 +66,7 @@ export function MagicLinkForm() {
     try {
       await sendMagicLink(data.email, true); // true for signup
       setUserEmail(data.email);
-      setStep('verify');
+      setStep('sent');
     } catch (error: any) {
       console.error('Erro ao enviar magic link para cadastro:', error);
       setError(error.message || 'Erro ao enviar Magic Link. Tente novamente.');
@@ -81,7 +81,7 @@ export function MagicLinkForm() {
     try {
       await sendMagicLink(data.email, false); // false for login
       setUserEmail(data.email);
-      setStep('verify');
+      setStep('sent');
     } catch (error: any) {
       console.error('Erro ao enviar magic link para login:', error);
       setError(error.message || 'Erro ao fazer login. Verifique se você já possui cadastro.');
@@ -137,17 +137,18 @@ export function MagicLinkForm() {
     );
   }
 
-  if (step === 'verify') {
+  if (step === 'sent') {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="text-center">
           <div className="h-12 w-12 rounded-full bg-blue-100 mx-auto flex items-center justify-center mb-4">
             <Mail className="h-6 w-6 text-blue-600" />
           </div>
-          <CardTitle className="text-2xl">Verifique seu email</CardTitle>
+          <CardTitle className="text-2xl">Email enviado!</CardTitle>
           <CardDescription>
             Enviamos um Magic Link para <strong>{userEmail}</strong>. 
-            Cole o token aqui para continuar.
+            <br />
+            <strong>Clique no link</strong> para fazer login automaticamente.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -156,45 +157,23 @@ export function MagicLinkForm() {
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
-          <Form {...verifyForm}>
-            <form onSubmit={verifyForm.handleSubmit(onVerifySubmit)} className="space-y-4">
-              <FormField
-                control={verifyForm.control}
-                name="token"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Token do Magic Link</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Cole o token aqui"
-                        type="text"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verificando...
-                  </>
-                ) : (
-                  'Verificar Magic Link'
-                )}
-              </Button>
-            </form>
-          </Form>
+          <div className="text-center space-y-4">
+            <p className="text-sm text-gray-600">
+              📧 Verifique sua caixa de entrada (e spam) e clique no link para entrar no sistema.
+            </p>
+            <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+              <p className="text-xs text-blue-700">
+                ✨ <strong>Dica:</strong> O link te levará diretamente ao dashboard - não é necessário inserir token!
+              </p>
+            </div>
+          </div>
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button
             variant="outline"
             onClick={resetForm}
-            disabled={isLoading}
           >
-            Voltar
+            Voltar para Login
           </Button>
         </CardFooter>
       </Card>

@@ -23,6 +23,7 @@ export const sendMagicLink = async (email: string, isSignup: boolean = true) => 
       email,
       options: {
         shouldCreateUser: isSignup, // Criar usuário apenas se for cadastro
+        emailRedirectTo: `${window.location.origin}/callback`, // Redirecionar para página de callback
       },
     });
 
