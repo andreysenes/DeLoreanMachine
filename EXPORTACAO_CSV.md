@@ -67,9 +67,11 @@ O DeLorean Machine possui funcionalidade completa de exportação de dados em fo
 ### **Tratamento de Dados**
 
 ```typescript
-// Exemplo: Formatação de apontamentos
+// Exemplo: Formatação de apontamentos com correção de fuso horário
+import { parseSupabaseDate } from '@/lib/utils';
+
 const csvData = timeEntries.map(entry => ({
-  'Data': new Date(entry.data).toLocaleDateString('pt-BR'),
+  'Data': parseSupabaseDate(entry.data).toLocaleDateString('pt-BR'),
   'Projeto ID': entry.project_id,
   'Função': entry.funcao,
   'Descrição': entry.descricao || '',
@@ -77,6 +79,8 @@ const csvData = timeEntries.map(entry => ({
   'Criado em': new Date(entry.created_at).toLocaleString('pt-BR')
 }));
 ```
+
+> **Nota:** Utilizamos `parseSupabaseDate` para garantir que as datas vindas do banco (YYYY-MM-DD) sejam interpretadas corretamente no fuso horário local, evitando erros de "dia anterior" comuns com `new Date()`.
 
 ### **Estados e Validações**
 

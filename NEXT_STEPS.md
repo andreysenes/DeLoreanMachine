@@ -62,11 +62,13 @@ SELECT pg_notify('pgrst', 'reload schema');
 - [x] Excluir apontamento
 - [x] Dashboard com dados reais
 
-#### Novas Funcionalidades:
+#### Funcionalidades Completas:
 - [x] **Alternar tema** (Light/Dark/System)
 - [x] **Cache automático** em todas operações
 - [x] **Preferências persistentes** entre sessões
 - [x] **Performance otimizada** na navegação
+- [x] **Exportação CSV** de Relatórios e Projetos
+- [x] **Autenticação Segura** via código OTP
 
 ## 🎯 O Que Esperar
 

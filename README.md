@@ -5,7 +5,7 @@ Sistema completo de controle de horas para freelancers e times, desenvolvido com
 ## 🚀 Funcionalidades
 
 ### ✅ Implementadas
-- **Autenticação via Magic Link** - Login seguro por email
+- **Autenticação via Magic Link (OTP)** - Login seguro via código enviado por email
 - **Dashboard Interativo** - Visão geral com resumos e métricas
 - **Controle de Horas** - Registrar, editar e visualizar apontamentos
 - **Gerenciamento de Projetos** - CRUD completo de projetos e clientes
@@ -15,10 +15,10 @@ Sistema completo de controle de horas para freelancers e times, desenvolvido com
 - **Preferências do Usuário** - Configurações personalizadas salvas no banco
 - **Interface Responsiva** - Funciona em desktop e mobile
 - **Tema Moderno** - Design minimalista com tons neutros
+- **Exportação CSV** - Relatórios e backup de dados
 
 ### 🔄 Placeholders para Integração
 - Conexão com Supabase (estrutura pronta)
-- Exportação CSV (interface implementada)
 - Magic Link por email (fluxo completo)
 - Gráficos e relatórios (área reservada)
 

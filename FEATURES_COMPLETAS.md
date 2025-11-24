@@ -3,7 +3,7 @@
 ## 📋 Status Atual das Funcionalidades
 
 ### ✅ Autenticação e Usuários
-- [x] **Login via Magic Link** - Sistema completo de autenticação
+- [x] **Login via OTP (Código)** - Sistema seguro com código enviado por email
 - [x] **Cadastro de Usuário** - Nome, sobrenome e email
 - [x] **Logout Seguro** - Limpeza de sessão
 - [x] **Persistência de Sessão** - Usuário mantém login
@@ -121,7 +121,7 @@
 - [x] **Interface Completa** - Botões e dropdowns
 - [x] **Filtros de Data** - Período personalizado
 - [x] **Seleção de Projetos** - Exportação específica
-- [ ] **Geração CSV Real** - Biblioteca sheetjs
+- [x] **Geração CSV Real** - Implementação nativa
 - [ ] **Exportação PDF** - jsPDF integration
 - [ ] **Exportação Excel** - XLSX format
 
