@@ -1,4 +1,5 @@
 import { User, Project, TimeEntry, WeeklySummary, DailySummary, HourGoal } from '@/types/db';
+import { parseSupabaseDate } from '@/lib/utils';
 
 // Mock data
 export const mockUser: User = {
@@ -145,7 +146,7 @@ export const exportToCSV = (data: any[], filename: string) => {
 // Helper functions for calculations
 export const calculateDailySummary = (date: Date, entries: TimeEntry[]): DailySummary => {
   const dayEntries = entries.filter(entry => 
-    entry.data.toDateString() === date.toDateString()
+    parseSupabaseDate(entry.data).toDateString() === date.toDateString()
   );
   
   return {
@@ -160,7 +161,7 @@ export const calculateWeeklySummary = (weekStart: Date, entries: TimeEntry[], pr
   weekEnd.setDate(weekStart.getDate() + 6);
   
   const weekEntries = entries.filter(entry => {
-    const entryDate = new Date(entry.data);
+    const entryDate = parseSupabaseDate(entry.data);
     return entryDate >= weekStart && entryDate <= weekEnd;
   });
   

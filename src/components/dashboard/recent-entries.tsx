@@ -9,6 +9,7 @@ import { getTimeEntries, getProjects } from '@/lib/supabase-client';
 import { TimeEntry, Project } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseSupabaseDate } from '@/lib/utils';
 
 export function RecentEntries() {
   const [recentEntries, setRecentEntries] = useState<TimeEntry[]>([]);
@@ -64,10 +65,10 @@ export function RecentEntries() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <div className="h-5 w-40 bg-muted rounded animate-pulse mb-2" />
-              <div className="h-4 w-56 bg-muted rounded animate-pulse" />
+              <div className="w-40 h-5 mb-2 rounded bg-muted animate-pulse" />
+              <div className="w-56 h-4 rounded bg-muted animate-pulse" />
             </div>
-            <div className="h-9 w-32 bg-muted rounded animate-pulse" />
+            <div className="w-32 rounded h-9 bg-muted animate-pulse" />
           </div>
         </CardHeader>
         <CardContent>
@@ -75,11 +76,11 @@ export function RecentEntries() {
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="flex items-start justify-between p-4 border rounded-lg">
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-32 bg-muted rounded animate-pulse" />
-                  <div className="h-3 w-24 bg-muted rounded animate-pulse" />
-                  <div className="h-3 w-48 bg-muted rounded animate-pulse" />
+                  <div className="w-32 h-4 rounded bg-muted animate-pulse" />
+                  <div className="w-24 h-3 rounded bg-muted animate-pulse" />
+                  <div className="w-48 h-3 rounded bg-muted animate-pulse" />
                 </div>
-                <div className="h-4 w-12 bg-muted rounded animate-pulse" />
+                <div className="w-12 h-4 rounded bg-muted animate-pulse" />
               </div>
             ))}
           </div>
@@ -100,7 +101,7 @@ export function RecentEntries() {
           </div>
           <Button size="sm" asChild>
             <a href="/hours">
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="w-4 h-4 mr-2" />
               Novo Apontamento
             </a>
           </Button>
@@ -112,11 +113,11 @@ export function RecentEntries() {
             recentEntries.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex items-start justify-between p-4 transition-colors border rounded-lg hover:bg-muted/50"
               >
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-sm">
+                    <h4 className="text-sm font-medium">
                       {getProjectName(entry.project_id)}
                     </h4>
                     <Badge variant="secondary" className="text-xs">
@@ -129,7 +130,7 @@ export function RecentEntries() {
                       {entry.funcao}
                     </Badge>
                     <span className="text-sm text-muted-foreground">
-                      {format(new Date(entry.data), 'dd/MM/yyyy', { locale: ptBR })}
+                      {format(parseSupabaseDate(entry.data), 'dd/MM/yyyy', { locale: ptBR })}
                     </span>
                   </div>
                   
@@ -142,27 +143,27 @@ export function RecentEntries() {
                 
                 <div className="flex items-center gap-3">
                   <div className="flex items-center text-sm font-medium">
-                    <Clock className="mr-1 h-4 w-4" />
+                    <Clock className="w-4 h-4 mr-1" />
                     {entry.horas}h
                   </div>
                   <Button variant="ghost" size="sm" asChild>
                     <a href="/hours">
-                      <ExternalLink className="h-4 w-4" />
+                      <ExternalLink className="w-4 h-4" />
                     </a>
                   </Button>
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-8">
-              <Clock className="mx-auto h-12 w-12 text-muted-foreground" />
+            <div className="py-8 text-center">
+              <Clock className="w-12 h-12 mx-auto text-muted-foreground" />
               <h3 className="mt-4 text-lg font-medium">Nenhum apontamento encontrado</h3>
               <p className="text-sm text-muted-foreground">
                 Comece registrando suas primeiras horas de trabalho.
               </p>
               <Button className="mt-4" asChild>
                 <a href="/hours">
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="w-4 h-4 mr-2" />
                   Novo Apontamento
                 </a>
               </Button>
@@ -171,11 +172,11 @@ export function RecentEntries() {
         </div>
         
         {recentEntries.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
+          <div className="pt-4 mt-4 border-t">
             <Button variant="outline" className="w-full" asChild>
               <a href="/hours">
                 Ver Todos os Apontamentos
-                <ExternalLink className="ml-2 h-4 w-4" />
+                <ExternalLink className="w-4 h-4 ml-2" />
               </a>
             </Button>
           </div>

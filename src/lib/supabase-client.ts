@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { User, Project, TimeEntry, WeeklySummary, DailySummary, HourGoal, UserProfile, UserPreferences, UserSettings } from '@/types/db';
+import { parseSupabaseDate } from '@/lib/utils';
 import { 
   mockTimeEntries, 
   mockProjects, 
@@ -418,7 +419,7 @@ export const deleteTimeEntry = async (id: string) => {
 
 export const calculateDailySummary = (date: Date, entries: TimeEntry[]): DailySummary => {
   const dayEntries = entries.filter(entry => 
-    new Date(entry.data).toDateString() === date.toDateString()
+    parseSupabaseDate(entry.data).toDateString() === date.toDateString()
   );
   
   return {
@@ -445,7 +446,7 @@ export const calculateWeeklySummary = async (): Promise<WeeklySummary> => {
   const projects = await getProjects();
   
   const weekEntries = entries.filter(entry => {
-    const entryDate = new Date(entry.data);
+    const entryDate = parseSupabaseDate(entry.data);
     return entryDate >= weekStart && entryDate <= weekEnd;
   });
   

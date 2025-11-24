@@ -13,6 +13,7 @@ import { getProjects, getTimeEntries, deleteProject, updateProject } from '@/lib
 import { Project, TimeEntry } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseSupabaseDate } from '@/lib/utils';
 import { ProjectForm } from './project-form';
 
 export function ProjectTable() {
@@ -53,7 +54,7 @@ export function ProjectTable() {
   const getProjectLastActivity = (projectId: string) => {
     const projectEntries = timeEntries
       .filter(entry => entry.project_id === projectId)
-      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+      .sort((a, b) => parseSupabaseDate(b.data).getTime() - parseSupabaseDate(a.data).getTime());
     
     return projectEntries.length > 0 ? projectEntries[0].data : null;
   };
@@ -115,7 +116,7 @@ export function ProjectTable() {
 
   const getStatusBadge = (status: string) => {
     return status === 'ativo' 
-      ? <Badge className="bg-green-100 text-green-800">Ativo</Badge>
+      ? <Badge className="text-green-800 bg-green-100">Ativo</Badge>
       : <Badge variant="secondary">Inativo</Badge>;
   };
 
@@ -124,7 +125,7 @@ export function ProjectTable() {
       <Card>
         <CardContent className="py-8">
           <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Loader2 className="w-8 h-8 animate-spin" />
             <span className="ml-2">Carregando projetos...</span>
           </div>
         </CardContent>
@@ -136,7 +137,7 @@ export function ProjectTable() {
     <>
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-xl">Projetos</CardTitle>
               <CardDescription>
@@ -144,14 +145,14 @@ export function ProjectTable() {
               </CardDescription>
             </div>
             <Button onClick={handleNewProject}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="w-4 h-4 mr-2" />
               Novo Projeto
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
             <div className="flex-1">
               <Input
                 placeholder="Buscar por projeto ou cliente..."
@@ -172,7 +173,7 @@ export function ProjectTable() {
           </div>
 
           {/* Summary */}
-          <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+          <div className="p-4 mb-4 rounded-lg bg-muted/50">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
                 {filteredProjects.length} projeto{filteredProjects.length !== 1 ? 's' : ''} encontrado{filteredProjects.length !== 1 ? 's' : ''}
@@ -222,14 +223,14 @@ export function ProjectTable() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center">
-                            <Clock className="mr-1 h-4 w-4" />
+                            <Clock className="w-4 h-4 mr-1" />
                             {totalHours.toFixed(1)}h
                           </div>
                         </TableCell>
                         <TableCell>
                           {lastActivity ? (
                             <span className="text-sm">
-                              {format(new Date(lastActivity), 'dd/MM/yyyy', { locale: ptBR })}
+                              {format(parseSupabaseDate(lastActivity), 'dd/MM/yyyy', { locale: ptBR })}
                             </span>
                           ) : (
                             <span className="text-sm text-muted-foreground">
@@ -241,23 +242,23 @@ export function ProjectTable() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
+                                <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleEdit(project)}>
-                                <Edit2 className="mr-2 h-4 w-4" />
+                                <Edit2 className="w-4 h-4 mr-2" />
                                 Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => toggleStatus(project)}>
-                                <Clock className="mr-2 h-4 w-4" />
+                                <Clock className="w-4 h-4 mr-2" />
                                 {project.status === 'ativo' ? 'Inativar' : 'Ativar'}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleDelete(project.id, project.nome)}
                                 className="text-red-600"
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
+                                <Trash2 className="w-4 h-4 mr-2" />
                                 Excluir
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -268,9 +269,9 @@ export function ProjectTable() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={6} className="py-8 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <Filter className="h-8 w-8 text-muted-foreground" />
+                        <Filter className="w-8 h-8 text-muted-foreground" />
                         <p className="text-muted-foreground">
                           {projects.length === 0 
                             ? 'Nenhum projeto encontrado. Crie seu primeiro projeto!'

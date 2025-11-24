@@ -13,6 +13,7 @@ import { TimeEntry, Project } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TimeEntryForm } from './time-entry-form';
+import { parseSupabaseDate } from '@/lib/utils';
 
 export function TimeEntryTable() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -120,7 +121,7 @@ export function TimeEntryTable() {
       <Card>
         <CardContent className="py-8">
           <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Loader2 className="w-8 h-8 animate-spin" />
             <span className="ml-2">Carregando apontamentos...</span>
           </div>
         </CardContent>
@@ -132,7 +133,7 @@ export function TimeEntryTable() {
     <>
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-xl">Controle de Horas</CardTitle>
               <CardDescription>
@@ -140,14 +141,14 @@ export function TimeEntryTable() {
               </CardDescription>
             </div>
             <Button onClick={handleNewEntry}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="w-4 h-4 mr-2" />
               Novo Apontamento
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
             <div className="flex-1">
               <Input
                 placeholder="Buscar por projeto ou descrição..."
@@ -184,7 +185,7 @@ export function TimeEntryTable() {
           </div>
 
           {/* Summary */}
-          <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+          <div className="p-4 mb-4 rounded-lg bg-muted/50">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
                 {filteredEntries.length} apontamento{filteredEntries.length !== 1 ? 's' : ''} encontrado{filteredEntries.length !== 1 ? 's' : ''}
@@ -213,7 +214,7 @@ export function TimeEntryTable() {
                   filteredEntries.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell>
-                        {format(new Date(entry.data), 'dd/MM/yyyy', { locale: ptBR })}
+                        {format(parseSupabaseDate(entry.data), 'dd/MM/yyyy', { locale: ptBR })}
                       </TableCell>
                       <TableCell>
                         <div>
@@ -233,17 +234,17 @@ export function TimeEntryTable() {
                           {entry.descricao || '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="font-medium text-right">
                         {entry.horas}h
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(entry)}
                           >
-                            <Edit2 className="h-4 w-4" />
+                            <Edit2 className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -251,7 +252,7 @@ export function TimeEntryTable() {
                             onClick={() => handleDelete(entry.id)}
                             className="text-red-600 hover:text-red-700"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -259,9 +260,9 @@ export function TimeEntryTable() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={6} className="py-8 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <Filter className="h-8 w-8 text-muted-foreground" />
+                        <Filter className="w-8 h-8 text-muted-foreground" />
                         <p className="text-muted-foreground">
                           {entries.length === 0 
                             ? 'Nenhum apontamento encontrado. Crie seu primeiro apontamento!'

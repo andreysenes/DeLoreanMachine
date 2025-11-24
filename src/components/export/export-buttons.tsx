@@ -26,6 +26,7 @@ import {
   exportToCSV,
   calculateWeeklySummary 
 } from '@/lib/supabase-client';
+import { parseSupabaseDate } from '@/lib/utils';
 
 interface ExportButtonsProps {
   variant?: 'button' | 'dropdown';
@@ -88,7 +89,7 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
 
       // Formatar dados para CSV
       const csvData = timeEntries.map(entry => ({
-        'Data': new Date(entry.data).toLocaleDateString('pt-BR'),
+        'Data': parseSupabaseDate(entry.data).toLocaleDateString('pt-BR'),
         'Projeto ID': entry.project_id,
         'Função': entry.funcao,
         'Descrição': entry.descricao || '',
@@ -166,7 +167,7 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
         const row: any = {};
         
         if (exportSettings.columns.data) {
-          row['Data'] = new Date(entry.data).toLocaleDateString('pt-BR');
+          row['Data'] = parseSupabaseDate(entry.data).toLocaleDateString('pt-BR');
         }
         if (exportSettings.columns.projeto) {
           row['Projeto'] = projectsMap[entry.project_id] || 'Projeto não encontrado';
@@ -237,7 +238,7 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
   if (!isMounted) {
     return (
       <Button variant="outline" size={size} disabled>
-        <Download className="mr-2 h-4 w-4" />
+        <Download className="w-4 h-4 mr-2" />
         Exportar...
       </Button>
     );
@@ -252,7 +253,7 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
         onClick={handleExportTimeEntries}
         disabled={isExporting}
       >
-        <Download className="mr-2 h-4 w-4" />
+        <Download className="w-4 h-4 mr-2" />
         {isExporting ? 'Exportando...' : 'Exportar CSV'}
       </Button>
     );
@@ -270,24 +271,24 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
             id="export-dropdown-trigger"
             aria-controls="export-dropdown-content"
           >
-            <Download className="mr-2 h-4 w-4" />
+            <Download className="w-4 h-4 mr-2" />
             {isExporting ? 'Exportando...' : 'Exportar'}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56" id="export-dropdown-content">
           <DialogTrigger asChild>
             <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
+              <Settings className="w-4 h-4 mr-2" />
               Exportar Personalizado
             </DropdownMenuItem>
           </DialogTrigger>
           <DropdownMenuItem onClick={handleExportProjects}>
-            <Building className="mr-2 h-4 w-4" />
+            <Building className="w-4 h-4 mr-2" />
             Projetos
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleWeeklyReport}>
-            <Calendar className="mr-2 h-4 w-4" />
+            <Calendar className="w-4 h-4 mr-2" />
             Relatório Semanal
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -304,7 +305,7 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
         <div className="space-y-6">
           {/* Seleção de Colunas */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Colunas para exportar</h4>
+            <h4 className="mb-3 text-sm font-medium">Colunas para exportar</h4>
             <div className="space-y-2">
               {[
                 { key: 'data', label: 'Data' },
@@ -335,8 +336,8 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
 
           {/* Seleção de Projetos */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Filtrar por projetos (opcional)</h4>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
+            <h4 className="mb-3 text-sm font-medium">Filtrar por projetos (opcional)</h4>
+            <div className="space-y-2 overflow-y-auto max-h-32">
               {projects.map((project) => (
                 <div key={project.id} className="flex items-center space-x-2">
                   <Checkbox

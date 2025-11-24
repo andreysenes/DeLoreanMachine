@@ -15,6 +15,7 @@ import { format, addDays, subDays, startOfToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getProjects, createTimeEntry, updateTimeEntry } from '@/lib/supabase-client';
 import { Project, TimeEntry } from '@/types/db';
+import { parseSupabaseDate } from '@/lib/utils';
 
 const formSchema = z.object({
   data: z.string().refine((val) => !isNaN(Date.parse(val)), {
@@ -33,6 +34,7 @@ interface TimeEntryFormProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   entryToEdit?: TimeEntry | null;
+  initialDate?: Date;
 }
 
 const functions = [
@@ -46,7 +48,7 @@ const functions = [
   'Review',
 ];
 
-export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: TimeEntryFormProps) {
+export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit, initialDate }: TimeEntryFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
@@ -69,8 +71,11 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
       loadProjects();
       
       if (entryToEdit) {
+        // Usa parseSupabaseDate para garantir que a data do banco seja interpretada corretamente
+        const dateObj = parseSupabaseDate(entryToEdit.data);
+        
         form.reset({
-          data: format(new Date(entryToEdit.data), 'yyyy-MM-dd'),
+          data: format(dateObj, 'yyyy-MM-dd'),
           project_id: entryToEdit.project_id,
           funcao: entryToEdit.funcao,
           descricao: entryToEdit.descricao || '',
@@ -78,7 +83,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
         });
       } else {
         form.reset({
-          data: format(startOfToday(), 'yyyy-MM-dd'),
+          data: format(initialDate || startOfToday(), 'yyyy-MM-dd'),
           project_id: '',
           funcao: '',
           descricao: '',
@@ -86,7 +91,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
         });
       }
     }
-  }, [open, entryToEdit, form]);
+  }, [open, entryToEdit, form, initialDate]);
 
   const loadProjects = async () => {
     try {
@@ -104,9 +109,13 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
     try {
       setIsLoading(true);
       
+      // Converte a string YYYY-MM-DD para Date local (00:00:00)
+      // Isso garante que quando o Supabase salvar, considere o dia correto
+      const dateToSave = parseSupabaseDate(data.data);
+
       if (isEditing && entryToEdit) {
         await updateTimeEntry(entryToEdit.id, {
-          data: new Date(data.data),
+          data: dateToSave,
           project_id: data.project_id,
           funcao: data.funcao,
           descricao: data.descricao || undefined,
@@ -114,7 +123,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
         });
       } else {
         await createTimeEntry({
-          data: new Date(data.data),
+          data: dateToSave,
           project_id: data.project_id,
           funcao: data.funcao,
           descricao: data.descricao || undefined,
@@ -150,7 +159,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Data */}
               <FormField
                 control={form.control}
@@ -177,7 +186,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
                           const yesterday = subDays(startOfToday(), 1);
                           field.onChange(format(yesterday, 'yyyy-MM-dd'));
                         }}
-                        className="text-xs h-6 px-2"
+                        className="h-6 px-2 text-xs"
                       >
                         Ontem
                       </Button>
@@ -189,7 +198,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
                         onClick={() => {
                           field.onChange(format(startOfToday(), 'yyyy-MM-dd'));
                         }}
-                        className="text-xs h-6 px-2"
+                        className="h-6 px-2 text-xs"
                       >
                         Hoje
                       </Button>
@@ -202,12 +211,12 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
                           const tomorrow = addDays(startOfToday(), 1);
                           field.onChange(format(tomorrow, 'yyyy-MM-dd'));
                         }}
-                        className="text-xs h-6 px-2"
+                        className="h-6 px-2 text-xs"
                       >
                         Amanhã
                       </Button>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="mt-1 text-xs text-muted-foreground">
                       Use os atalhos acima ou selecione qualquer data no calendário
                     </div>
                     <FormMessage />
@@ -328,7 +337,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit }: Ti
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Salvando...
                   </>
                 ) : (
