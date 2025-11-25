@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Edit2, Trash2, Plus, Filter, MoreHorizontal, Clock, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getProjects, getTimeEntries, deleteProject, updateProject } from '@/lib/supabase-client';
+import { SwipeableItem } from '@/components/ui/swipeable-item';
 import { Project, TimeEntry } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -184,8 +185,8 @@ export function ProjectTable() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden overflow-x-auto md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -284,6 +285,71 @@ export function ProjectTable() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile List View */}
+          <div className="space-y-4 md:hidden">
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map((project) => {
+                const totalHours = getProjectHours(project.id);
+                
+                return (
+                  <SwipeableItem
+                    key={project.id}
+                    onEdit={() => handleEdit(project)}
+                    onDelete={() => handleDelete(project.id, project.nome)}
+                    className="border rounded-lg"
+                  >
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="font-medium">{project.nome}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {project.cliente}
+                          </div>
+                        </div>
+                        {getStatusBadge(project.status)}
+                      </div>
+                      
+                      {project.descricao && (
+                        <div className="text-sm text-muted-foreground">
+                          {project.descricao}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between pt-2 mt-2 border-t">
+                        <div className="flex items-center text-sm">
+                          <Clock className="w-4 h-4 mr-1 text-muted-foreground" />
+                          <span className="font-medium">{totalHours.toFixed(1)}h</span>
+                          <span className="ml-1 text-muted-foreground">totais</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => toggleStatus(project)}>
+                          {project.status === 'ativo' ? 'Inativar' : 'Ativar'}
+                        </Button>
+                      </div>
+                    </div>
+                  </SwipeableItem>
+                );
+              })
+            ) : (
+              <div className="py-8 text-center border rounded-lg bg-muted/10">
+                <div className="flex flex-col items-center gap-2">
+                  <Filter className="w-8 h-8 text-muted-foreground" />
+                  <p className="px-4 text-muted-foreground">
+                    {projects.length === 0 
+                      ? 'Nenhum projeto encontrado. Crie seu primeiro projeto!'
+                      : 'Nenhum projeto encontrado com os filtros aplicados'
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {filteredProjects.length > 0 && (
+              <p className="pt-2 text-xs text-center text-muted-foreground">
+                Deslize para editar ou excluir
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

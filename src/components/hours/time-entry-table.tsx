@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit2, Trash2, Plus, Filter, Loader2 } from 'lucide-react';
+import { Edit2, Trash2, Plus, Filter, Loader2, Clock } from 'lucide-react';
 import { getTimeEntries, getProjects, deleteTimeEntry } from '@/lib/supabase-client';
+import { SwipeableItem } from '@/components/ui/swipeable-item';
 import { TimeEntry, Project } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -196,8 +197,8 @@ export function TimeEntryTable() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden overflow-x-auto md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -275,6 +276,68 @@ export function TimeEntryTable() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile List View with Swipe */}
+          <div className="space-y-4 md:hidden">
+            {filteredEntries.length > 0 ? (
+              filteredEntries.map((entry) => (
+                <SwipeableItem
+                  key={entry.id}
+                  onEdit={() => handleEdit(entry)}
+                  onDelete={() => handleDelete(entry.id)}
+                  className="border rounded-lg"
+                >
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="font-medium">{getProjectName(entry.project_id)}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {getProjectClient(entry.project_id)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-muted/50">
+                        <Clock className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-sm font-medium">{entry.horas}h</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Badge className={`${getFunctionColor(entry.funcao)}`}>
+                        {entry.funcao}
+                      </Badge>
+                      <div className="text-sm text-muted-foreground">
+                        {format(parseSupabaseDate(entry.data), 'dd/MM/yyyy', { locale: ptBR })}
+                      </div>
+                    </div>
+                    
+                    {entry.descricao && (
+                      <div className="pt-2 text-sm border-t text-muted-foreground">
+                        {entry.descricao}
+                      </div>
+                    )}
+                  </div>
+                </SwipeableItem>
+              ))
+            ) : (
+              <div className="py-8 text-center border rounded-lg bg-muted/10">
+                <div className="flex flex-col items-center gap-2">
+                  <Filter className="w-8 h-8 text-muted-foreground" />
+                  <p className="px-4 text-muted-foreground">
+                    {entries.length === 0 
+                      ? 'Nenhum apontamento encontrado. Crie seu primeiro apontamento!'
+                      : 'Nenhum apontamento encontrado com os filtros aplicados'
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {filteredEntries.length > 0 && (
+              <p className="pt-2 text-xs text-center text-muted-foreground">
+                Deslize para editar ou excluir
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

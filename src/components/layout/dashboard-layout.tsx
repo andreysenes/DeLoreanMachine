@@ -2,6 +2,7 @@
 
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
+import { BottomNav } from './bottom-nav';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -13,10 +14,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sidebar />
       <div className="flex-1 lg:ml-64">
         <Topbar />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 pb-24 lg:p-6">
           {children}
         </main>
       </div>
+      <BottomNav />
     </div>
   );
 }

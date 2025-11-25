@@ -52,17 +52,17 @@ export function SummaryCards() {
 
   if (isLoading || !todaySummary || !weekSummary || !userSettings) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-              <div className="h-4 w-4 bg-muted rounded animate-pulse" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <div className="w-20 h-4 rounded bg-muted animate-pulse" />
+              <div className="w-4 h-4 rounded bg-muted animate-pulse" />
             </CardHeader>
             <CardContent>
-              <div className="h-8 w-16 bg-muted rounded animate-pulse mb-2" />
-              <div className="h-3 w-24 bg-muted rounded animate-pulse mb-2" />
-              <div className="h-2 w-full bg-muted rounded animate-pulse" />
+              <div className="w-16 h-8 mb-2 rounded bg-muted animate-pulse" />
+              <div className="w-24 h-3 mb-2 rounded bg-muted animate-pulse" />
+              <div className="w-full h-2 rounded bg-muted animate-pulse" />
             </CardContent>
           </Card>
         ))}
@@ -74,12 +74,12 @@ export function SummaryCards() {
   const weekProgress = (weekSummary.totalHours / userSettings.weeklyGoal) * 100;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {/* Horas de Hoje */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
           <CardTitle className="text-sm font-medium">Horas de Hoje</CardTitle>
-          <Clock className="h-4 w-4 text-muted-foreground" />
+          <Clock className="w-4 h-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
@@ -94,9 +94,9 @@ export function SummaryCards() {
 
       {/* Horas da Semana */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
           <CardTitle className="text-sm font-medium">Horas da Semana</CardTitle>
-          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Calendar className="w-4 h-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
@@ -111,16 +111,16 @@ export function SummaryCards() {
 
       {/* Meta Diária */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
           <CardTitle className="text-sm font-medium">Meta Diária</CardTitle>
-          <Target className="h-4 w-4 text-muted-foreground" />
+          <Target className="w-4 h-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{userSettings.dailyGoal}h</div>
           <p className="text-xs text-muted-foreground">
             {userSettings.workStartTime} - {userSettings.workEndTime}
           </p>
-          <div className="text-xs text-muted-foreground mt-2">
+          <div className="mt-2 text-xs text-muted-foreground">
             Progresso: {todayProgress.toFixed(0)}%
           </div>
         </CardContent>
@@ -128,9 +128,9 @@ export function SummaryCards() {
 
       {/* Projetos Ativos */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
           <CardTitle className="text-sm font-medium">Projetos Ativos</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <TrendingUp className="w-4 h-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
@@ -139,7 +139,7 @@ export function SummaryCards() {
           <p className="text-xs text-muted-foreground">
             Projetos com horas esta semana
           </p>
-          <div className="text-xs text-green-600 mt-2">
+          <div className="mt-2 text-xs text-green-600">
             +{weekSummary.projectBreakdown.length} esta semana
           </div>
         </CardContent>

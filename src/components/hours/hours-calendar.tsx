@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Briefcase, FileText, Edit2, Trash2, Plus } from 'lucide-react';
+import { ScrollAreaHorizontal } from '@/components/ui/scroll-area-horizontal';
 import { getTimeEntries, getProjects, deleteTimeEntry } from '@/lib/supabase-client';
 import { TimeEntry, Project } from '@/types/db';
 import { TimeEntryForm } from './time-entry-form';
@@ -20,10 +21,13 @@ import {
   subMonths, 
   startOfWeek, 
   endOfWeek, 
-  isToday 
+  isToday,
+  addWeeks,
+  subWeeks
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn, parseSupabaseDate } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function HoursCalendar() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -31,7 +35,8 @@ export function HoursCalendar() {
   const [isLoading, setIsLoading] = useState(true);
   
   // Calendar State
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const isMobile = useIsMobile();
   
   // Sheet/Details State
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -81,24 +86,33 @@ export function HoursCalendar() {
     return colors[funcao] || 'bg-gray-100 text-gray-800';
   };
 
-  const previousMonth = () => {
-    setCurrentMonth(subMonths(currentMonth, 1));
+  // Navigation Logic
+  const previousPeriod = () => {
+    if (isMobile) {
+      setCurrentDate(subWeeks(currentDate, 1));
+    } else {
+      setCurrentDate(subMonths(currentDate, 1));
+    }
   };
 
-  const nextMonth = () => {
-    setCurrentMonth(addMonths(currentMonth, 1));
+  const nextPeriod = () => {
+    if (isMobile) {
+      setCurrentDate(addWeeks(currentDate, 1));
+    } else {
+      setCurrentDate(addMonths(currentDate, 1));
+    }
   };
 
   const today = () => {
-    setCurrentMonth(new Date());
+    setCurrentDate(new Date());
   };
 
   const handleDayClick = (date: Date) => {
     const { hasEntries } = getDayData(date);
-    if (hasEntries) {
-      setSelectedDate(date);
-      setIsSheetOpen(true);
-    }
+    // On mobile/list view, clicking always opens details to add new or view existing
+    // On desktop grid, same logic
+    setSelectedDate(date);
+    setIsSheetOpen(true);
   };
 
   const handleEdit = (entry: TimeEntry) => {
@@ -120,14 +134,11 @@ export function HoursCalendar() {
     
     try {
       await deleteTimeEntry(entryId);
-      // Atualiza lista localmente
       const updatedEntries = entries.filter(e => e.id !== entryId);
       setEntries(updatedEntries);
       
-      // Se não houver mais entradas no dia, fecha o sheet?
-      // Não, mantém aberto vazio ou com restantes
       if (!updatedEntries.some(e => isSameDay(parseSupabaseDate(e.data), selectedDate!))) {
-        setIsSheetOpen(false);
+        // Keep sheet open even if empty
       }
     } catch (error: any) {
       console.error('Erro ao excluir:', error);
@@ -136,23 +147,32 @@ export function HoursCalendar() {
   };
 
   const handleFormSuccess = () => {
-    loadData(); // Recarrega tudo para garantir consistência
+    loadData();
     setEntryToEdit(null);
     setNewEntryDate(null);
-    // O Sheet permanece aberto pois showEditForm é independente
   };
 
-  const monthStart = startOfMonth(currentMonth);
+  // Date Calculation
+  const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
-  const startDate = startOfWeek(monthStart);
-  const endDate = endOfWeek(monthEnd);
   
+  // For Grid (Desktop): Full Month + buffer days
+  const startGridDate = startOfWeek(monthStart);
+  const endGridDate = endOfWeek(monthEnd);
   const calendarDays = eachDayOfInterval({
-    start: startDate,
-    end: endDate,
+    start: startGridDate,
+    end: endGridDate,
   });
 
-  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  // For List (Mobile): Current Week Only
+  const startWeekDate = startOfWeek(currentDate);
+  const endWeekDate = endOfWeek(currentDate);
+  const weekDaysList = eachDayOfInterval({
+    start: startWeekDate,
+    end: endWeekDate,
+  });
+
+  const weekDaysHeader = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   const getDayData = (date: Date) => {
     const dayEntries = entries.filter(entry => 
@@ -165,12 +185,16 @@ export function HoursCalendar() {
     return { totalHours, hasEntries, dayEntries };
   };
 
-  // Dados do dia selecionado para o Sheet
+  // Selected Day Data for Sheet
   const selectedDayEntries = selectedDate 
     ? entries.filter(e => isSameDay(parseSupabaseDate(e.data), selectedDate))
     : [];
   
   const selectedDayTotal = selectedDayEntries.reduce((sum, e) => sum + e.horas, 0);
+
+  const periodLabel = isMobile 
+    ? `Semana de ${format(startWeekDate, 'd MMM', { locale: ptBR })}`
+    : format(currentDate, 'MMMM yyyy', { locale: ptBR });
 
   if (isLoading) {
     return (
@@ -196,18 +220,18 @@ export function HoursCalendar() {
                 Calendário de Horas
               </CardTitle>
               <CardDescription>
-                Visualização mensal dos seus apontamentos
+                {isMobile ? 'Visualização semanal' : 'Visualização mensal'} dos seus apontamentos
               </CardDescription>
             </div>
             
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={previousMonth}>
+              <Button variant="outline" size="icon" onClick={previousPeriod}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <div className="min-w-[140px] text-center font-medium">
-                {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+              <div className="min-w-[160px] capitalize text-center font-medium">
+                {periodLabel}
               </div>
-              <Button variant="outline" size="icon" onClick={nextMonth}>
+              <Button variant="outline" size="icon" onClick={nextPeriod}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
               <Button variant="ghost" onClick={today} className="ml-2">
@@ -217,106 +241,182 @@ export function HoursCalendar() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Cabeçalho dos dias da semana */}
-          <div className="grid grid-cols-7 mb-2">
-            {weekDays.map((day) => (
-              <div key={day} className="py-2 text-sm font-medium text-center text-muted-foreground">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Grid do calendário */}
-          <div className="grid grid-cols-7 gap-1 auto-rows-fr">
-            {calendarDays.map((day, dayIdx) => {
-              const { totalHours, hasEntries } = getDayData(day);
-              const isCurrentMonth = isSameMonth(day, monthStart);
-              const isTodayDate = isToday(day);
-
-              return (
-                <div
-                  key={day.toString()}
-                  onClick={() => handleDayClick(day)}
-                  className={cn(
-                    "min-h-[100px] p-2 border rounded-md flex flex-col transition-colors relative group",
-                    hasEntries ? "cursor-pointer hover:bg-accent/50" : "cursor-default hover:bg-accent/20",
-                    !isCurrentMonth && "bg-muted/30 opacity-50",
-                    isTodayDate && "border-primary bg-accent/20",
-                    hasEntries && isCurrentMonth && "bg-primary/5 border-primary/20"
-                  )}
-                >
-                  <div className="flex items-start justify-between">
-                    <span className={cn(
-                      "text-sm font-medium h-6 w-6 flex items-center justify-center rounded-full",
-                      isTodayDate && "bg-primary text-primary-foreground"
-                    )}>
-                      {format(day, 'd')}
-                    </span>
-                    {hasEntries && (
-                      <div className="w-2 h-2 rounded-full bg-primary" title="Possui apontamentos" />
-                    )}
-                  </div>
-
-                  <div className="flex flex-col items-center justify-center flex-1 gap-1 mt-2">
-                    {hasEntries ? (
-                      <>
-                        <span className="text-lg font-bold text-primary">
-                          {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)}h
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          apontadas
-                        </span>
-                      </>
-                    ) : (
-                      isCurrentMonth && (
-                      <span className="text-xs text-muted-foreground/30">
-                        -
-                      </span>
-                      )
-                    )}
-                  </div>
-
-                  {/* Botão de Adicionar no Hover */}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute w-6 h-6 transition-opacity border shadow-sm opacity-0 bottom-1 right-1 group-hover:opacity-100 bg-background/80 hover:bg-background"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleNewEntry(day);
-                    }}
-                    title="Adicionar apontamento"
-                  >
-                    <Plus className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
           
-          {/* Legenda / Resumo */}
-          <div className="flex justify-end mt-6 text-sm text-muted-foreground">
-             <div>
-               Total no mês: <span className="font-medium text-foreground">
-                 {calendarDays
-                   .filter(d => isSameMonth(d, monthStart))
-                   .reduce((acc, day) => acc + getDayData(day).totalHours, 0)
-                   .toFixed(1)}h
-               </span>
+          {/* Desktop Grid View */}
+          <div className="hidden md:block">
+             <div className="grid grid-cols-7 mb-2">
+                {weekDaysHeader.map((day) => (
+                  <div key={day} className="py-2 text-sm font-medium text-center text-muted-foreground">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1 auto-rows-fr">
+                {calendarDays.map((day) => {
+                  const { totalHours, hasEntries } = getDayData(day);
+                  const isCurrentMonth = isSameMonth(day, monthStart);
+                  const isTodayDate = isToday(day);
+
+                  return (
+                    <div
+                      key={day.toString()}
+                      onClick={() => handleDayClick(day)}
+                      className={cn(
+                        "min-h-[100px] p-2 border rounded-md flex flex-col transition-colors relative group",
+                        hasEntries ? "cursor-pointer hover:bg-accent/50" : "cursor-default hover:bg-accent/20",
+                        !isCurrentMonth && "bg-muted/30 opacity-50",
+                        isTodayDate && "border-primary bg-accent/20",
+                        hasEntries && isCurrentMonth && "bg-primary/5 border-primary/20"
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <span className={cn(
+                          "text-sm font-medium h-6 w-6 flex items-center justify-center rounded-full",
+                          isTodayDate && "bg-primary text-primary-foreground"
+                        )}>
+                          {format(day, 'd')}
+                        </span>
+                        {hasEntries && (
+                          <div className="w-2 h-2 rounded-full bg-primary" title="Possui apontamentos" />
+                        )}
+                      </div>
+
+                      <div className="flex flex-col items-center justify-center flex-1 gap-1 mt-2">
+                        {hasEntries ? (
+                          <>
+                            <span className="text-lg font-bold text-primary">
+                              {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)}h
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              apontadas
+                            </span>
+                          </>
+                        ) : (
+                          isCurrentMonth && (
+                            <span className="text-xs text-muted-foreground/30">-</span>
+                          )
+                        )}
+                      </div>
+
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute w-6 h-6 transition-opacity border shadow-sm opacity-0 bottom-1 right-1 group-hover:opacity-100 bg-background/80 hover:bg-background"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNewEntry(day);
+                        }}
+                        title="Adicionar apontamento"
+                      >
+                        <Plus className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+               {/* Monthly Total - Desktop */}
+              <div className="flex justify-end mt-6 text-sm text-muted-foreground">
+                <div>
+                  Total no mês: <span className="font-medium text-foreground">
+                    {calendarDays
+                      .filter(d => isSameMonth(d, monthStart))
+                      .reduce((acc, day) => acc + getDayData(day).totalHours, 0)
+                      .toFixed(1)}h
+                  </span>
+                </div>
+              </div>
+          </div>
+
+          {/* Mobile List View */}
+          <div className="space-y-2 md:hidden">
+            {weekDaysList.map((day) => {
+               const { totalHours, hasEntries } = getDayData(day);
+               const isTodayDate = isToday(day);
+               
+               return (
+                 <div 
+                    key={day.toString()}
+                    onClick={() => handleDayClick(day)}
+                    className={cn(
+                      "flex items-center justify-between p-4 border rounded-lg active:bg-accent/50 transition-colors",
+                      isTodayDate && "border-primary/50 bg-primary/5"
+                    )}
+                 >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-muted",
+                        isTodayDate && "bg-primary text-primary-foreground"
+                      )}>
+                        <span className="text-xs font-medium uppercase">{format(day, 'EEE', { locale: ptBR })}</span>
+                        <span className="text-lg font-bold">{format(day, 'd')}</span>
+                      </div>
+                      
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-muted-foreground">Total de Horas</span>
+                        <span className={cn("text-lg font-bold", hasEntries ? "text-foreground" : "text-muted-foreground/50")}>
+                           {hasEntries ? `${totalHours.toFixed(1)}h` : "0.0h"}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                       {hasEntries ? (
+                          <Badge variant="secondary" className="ml-2">
+                            {getDayData(day).dayEntries.length} regs
+                          </Badge>
+                       ) : (
+                          <Button variant="ghost" size="sm" className="text-primary" onClick={(e) => {
+                             e.stopPropagation();
+                             handleNewEntry(day);
+                          }}>
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add
+                          </Button>
+                       )}
+                       <ChevronRight className="w-4 h-4 ml-2 text-muted-foreground" />
+                    </div>
+                 </div>
+               )
+            })}
+            
+            {/* Weekly Total - Mobile */}
+             <div className="flex items-center justify-between px-4 py-4 mt-4 border-t text-muted-foreground">
+                <span className="font-medium">Total da Semana</span>
+                <span className="text-lg font-bold text-foreground">
+                  {weekDaysList
+                    .reduce((acc, day) => acc + getDayData(day).totalHours, 0)
+                    .toFixed(1)}h
+                </span>
              </div>
           </div>
+          
         </CardContent>
       </Card>
 
       {/* Sheet de Detalhes */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+        <SheetContent side="bottom" className="h-[85vh] sm:h-[100vh] sm:max-w-[540px] overflow-y-auto">
+           {/* Sheet content remains the same, just responsive side="bottom" on mobile might be nicer, but standard Side sheet is fine too. 
+               Actually user is used to side sheet on desktop, maybe bottom sheet on mobile? 
+               Shadcn Sheet `side` prop controls this. 
+               Let's make it `side={isMobile ? "bottom" : "right"}` logic.
+           */}
           <SheetHeader className="mb-6">
             <SheetTitle>Apontamentos do Dia</SheetTitle>
             <SheetDescription>
               {selectedDate && format(selectedDate, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </SheetDescription>
           </SheetHeader>
+          
+          <div className="flex justify-end mb-6">
+            <Button onClick={() => {
+               if (selectedDate) handleNewEntry(selectedDate);
+               // Optional: close sheet? No, form opens in Dialog on top.
+            }}>
+               <Plus className="w-4 h-4 mr-2" />
+               Novo Apontamento
+            </Button>
+          </div>
 
           <div className="space-y-6">
             <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
@@ -324,7 +424,7 @@ export function HoursCalendar() {
               <span className="text-xl font-bold">{selectedDayTotal.toFixed(1)}h</span>
             </div>
 
-            <div className="space-y-4">
+            <div className="pb-8 space-y-4">
               {selectedDayEntries.length > 0 ? (
                 selectedDayEntries.map((entry) => (
                   <div key={entry.id} className="p-4 space-y-3 transition-colors border rounded-lg hover:bg-accent/20">

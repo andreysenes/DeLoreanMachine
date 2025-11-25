@@ -1,17 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { 
   LayoutDashboard, 
   Clock4, 
   Briefcase, 
   Settings, 
-  Menu,
   LogOut
 } from 'lucide-react';
 import { logout } from '@/lib/supabase-placeholders';
@@ -55,17 +52,17 @@ function SidebarContent({ className }: SidebarContentProps) {
   return (
     <div className={cn('flex h-full flex-col', className)}>
       {/* Logo */}
-      <div className="flex h-16 items-center border-b px-6">
+      <div className="flex items-center h-16 px-6 border-b">
         <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Clock4 className="h-4 w-4 text-primary-foreground" />
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary">
+            <Clock4 className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg">DeLorean</span>
+          <span className="text-lg font-semibold">DeLorean</span>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-2 p-4">
+      <nav className="flex-1 p-4 space-y-2">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -79,7 +76,7 @@ function SidebarContent({ className }: SidebarContentProps) {
                   isActive && 'bg-primary text-primary-foreground'
                 )}
               >
-                <Icon className="mr-3 h-4 w-4" />
+                <Icon className="w-4 h-4 mr-3" />
                 {item.label}
               </Button>
             </Link>
@@ -91,10 +88,10 @@ function SidebarContent({ className }: SidebarContentProps) {
       <div className="p-4 border-t">
         <Button 
           variant="ghost" 
-          className="w-full justify-start text-muted-foreground hover:text-foreground"
+          className="justify-start w-full text-muted-foreground hover:text-foreground"
           onClick={logout}
         >
-          <LogOut className="mr-3 h-4 w-4" />
+          <LogOut className="w-4 h-4 mr-3" />
           Sair
         </Button>
       </div>
@@ -103,59 +100,9 @@ function SidebarContent({ className }: SidebarContentProps) {
 }
 
 export function Sidebar() {
-  const [open, setOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Evita hydration mismatch renderizando o Sheet apenas no cliente
-  if (!isMounted) {
-    return (
-      <>
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-card lg:border-r">
-          <SidebarContent />
-        </div>
-        {/* Placeholder para mobile */}
-        <div className="lg:hidden">
-          <Button variant="outline" size="icon" className="fixed top-4 left-4 z-50" disabled>
-            <Menu className="h-4 w-4" />
-          </Button>
-        </div>
-      </>
-    );
-  }
-
   return (
-    <>
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-card lg:border-r">
-        <SidebarContent />
-      </div>
-
-      {/* Mobile Sidebar */}
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild className="lg:hidden">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="fixed top-4 left-4 z-50"
-            id="sidebar-mobile-trigger"
-            aria-controls="sidebar-mobile-sheet"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent 
-          side="left" 
-          className="p-0 w-64"
-          id="sidebar-mobile-sheet"
-        >
-          <SidebarContent />
-        </SheetContent>
-      </Sheet>
-    </>
+    <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-card lg:border-r">
+      <SidebarContent />
+    </div>
   );
 }

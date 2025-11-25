@@ -54,11 +54,10 @@ export function Topbar() {
 
   return (
     <div className="h-16 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="flex h-full items-center justify-between px-4 lg:px-6">
+      <div className="flex items-center justify-between h-full px-4 lg:px-6">
         {/* Left section - Greeting */}
         <div className="flex items-center space-x-4">
-          <div className="lg:hidden" /> {/* Espaço para o botão do menu mobile */}
-          <div className="flex flex-col lg:ml-0 ml-12">
+          <div className="flex flex-col">
             <h1 className="text-lg font-semibold">
               {getGreeting()}, {getUserName()}!
             </h1>
@@ -86,11 +85,11 @@ export function Topbar() {
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  className="relative h-10 w-10 rounded-full"
+                  className="relative w-10 h-10 rounded-full"
                   id="user-menu-trigger"
                   aria-controls="user-menu-content"
                 >
-                  <Avatar className="h-10 w-10">
+                  <Avatar className="w-10 h-10">
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {getUserInitials(user?.email || '')}
                     </AvatarFallback>
@@ -113,7 +112,7 @@ export function Topbar() {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a href="/profile" className="flex items-center">
-                  <User className="mr-2 h-4 w-4" />
+                  <User className="w-4 h-4 mr-2" />
                   Perfil
                 </a>
               </DropdownMenuItem>
@@ -126,10 +125,10 @@ export function Topbar() {
           ) : (
             <Button 
               variant="ghost" 
-              className="relative h-10 w-10 rounded-full"
+              className="relative w-10 h-10 rounded-full"
               disabled
             >
-              <Avatar className="h-10 w-10">
+              <Avatar className="w-10 h-10">
                 <AvatarFallback className="bg-muted">
                   US
                 </AvatarFallback>
