@@ -10,7 +10,7 @@ export interface Project {
   id: string;
   user_id: string;
   nome: string;
-  cliente: string;
+  client_id: string;
   status: 'ativo' | 'inativo';
   descricao?: string;
   created_at: Date;
@@ -98,3 +98,38 @@ export interface UserSettings {
 
 export type TimeEntryFormData = Omit<TimeEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type ProjectFormData = Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
+export interface Client {
+  id: string;
+  user_id: string;
+  nome: string;
+  cnpj?: string;
+  tipo_servico?: string;
+  horas_contratadas?: number;
+  contrato_id?: string;
+  data_inicio?: string;
+  data_conclusao?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Report {
+  id: string;
+  user_id: string;
+  title: string;
+  client_id?: string;
+  project_ids?: string[];
+  start_date: string;
+  end_date: string;
+  status: 'active' | 'archived';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportShare {
+  id: string;
+  report_id: string;
+  expires_at: string;
+  last_access?: string;
+  created_at: string;
+}

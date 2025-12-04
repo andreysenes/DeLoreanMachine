@@ -187,7 +187,7 @@ export function TimeEntryTable() {
 
           {/* Summary */}
           <div className="p-4 mb-4 rounded-lg bg-muted/50">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm font-medium">
                 {filteredEntries.length} apontamento{filteredEntries.length !== 1 ? 's' : ''} encontrado{filteredEntries.length !== 1 ? 's' : ''}
               </span>
@@ -289,14 +289,14 @@ export function TimeEntryTable() {
                   className="border rounded-lg"
                 >
                   <div className="p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="font-medium">{getProjectName(entry.project_id)}</div>
-                        <div className="text-sm text-muted-foreground">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="font-medium truncate">{getProjectName(entry.project_id)}</div>
+                        <div className="text-sm truncate text-muted-foreground">
                           {getProjectClient(entry.project_id)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-muted/50">
+                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-muted/50 shrink-0">
                         <Clock className="w-3 h-3 text-muted-foreground" />
                         <span className="text-sm font-medium">{entry.horas}h</span>
                       </div>

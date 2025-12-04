@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabase';
+import { supabase, isSupabaseConfigured, handleSupabaseError } from './supabase';
 import { User, Project, TimeEntry, WeeklySummary, DailySummary, HourGoal, UserProfile, UserPreferences, UserSettings } from '@/types/db';
 import { parseSupabaseDate } from '@/lib/utils';
 import { 
@@ -12,6 +12,16 @@ import {
 // ===============================
 // AUTH FUNCTIONS
 // ===============================
+
+// Helper para gerenciar o cookie de autenticação para o middleware
+const setAuthCookie = (token: string) => {
+  const maxAge = 60 * 60 * 24 * 7; // 7 dias
+  document.cookie = `supabase-auth-token=${token}; path=/; max-age=${maxAge}; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
+};
+
+const clearAuthCookie = () => {
+  document.cookie = `supabase-auth-token=; path=/; max-age=0; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
+};
 
 export const sendVerificationCode = async (email: string, isSignup: boolean = true) => {
   if (!isSupabaseConfigured || !supabase) {
@@ -30,14 +40,14 @@ export const sendVerificationCode = async (email: string, isSignup: boolean = tr
     if (error) throw error;
     return { success: true };
   } catch (error) {
-    console.error('Erro ao enviar código de verificação:', error);
-    throw error;
+    throw handleSupabaseError(error, 'sendVerificationCode');
   }
 };
 
 export const verifyCode = async (email: string, code: string) => {
   if (!isSupabaseConfigured || !supabase) {
     console.log('🔐 Mock: Verificando código:', code, 'para email:', email);
+    setAuthCookie('mock-token-123456');
     return { 
       success: true, 
       user: { id: 'mock-user-id', email, user_metadata: { nome: 'Usuário Mock' } }
@@ -52,10 +62,14 @@ export const verifyCode = async (email: string, code: string) => {
     });
 
     if (error) throw error;
+    
+    if (data.session?.access_token) {
+      setAuthCookie(data.session.access_token);
+    }
+    
     return { success: true, user: data.user };
   } catch (error) {
-    console.error('Erro ao verificar código:', error);
-    throw error;
+    throw handleSupabaseError(error, 'verifyCode');
   }
 };
 
@@ -73,6 +87,8 @@ export const getCurrentUser = async () => {
 };
 
 export const logout = async () => {
+  clearAuthCookie();
+  
   if (!isSupabaseConfigured || !supabase) {
     console.log('🚪 Mock: Fazendo logout...');
     window.location.href = '/login';
@@ -80,7 +96,7 @@ export const logout = async () => {
   }
 
   const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  if (error) console.error('Error signing out:', error);
   
   window.location.href = '/login';
 };
@@ -91,16 +107,12 @@ export const logout = async () => {
 
 export const getUserSettings = async (): Promise<HourGoal> => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('⚙️ Mock: Retornando configurações mock');
     return mockHourGoal;
   }
 
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      console.log('⚙️ Usuário não autenticado, retornando configurações padrão');
-      return mockHourGoal;
-    }
+    if (!user) return mockHourGoal;
 
     const { data, error } = await supabase
       .from('user_settings')
@@ -108,21 +120,13 @@ export const getUserSettings = async (): Promise<HourGoal> => {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // Se tabela não existe
     if (error) {
-      console.log('⚙️ Erro detalhado:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-      
+      // Se não existir tabela, logar e retornar mock sem explodir
       if (error.code === '42P01') {
-        console.log('⚙️ Tabela user_settings não existe, retornando padrão');
+        console.warn('Tabela user_settings não encontrada.');
         return mockHourGoal;
       }
-      console.warn('⚙️ Problema com configurações, usando dados padrão');
-      return mockHourGoal;
+      throw error;
     }
 
     if (!data) {
@@ -142,13 +146,7 @@ export const getUserSettings = async (): Promise<HourGoal> => {
           .select()
           .single();
 
-        if (createError) {
-          console.log('⚙️ Erro ao criar configurações padrão:', {
-            code: createError.code,
-            message: createError.message
-          });
-          return mockHourGoal;
-        }
+        if (createError) throw createError;
 
         return {
           dailyGoal: newSettings.daily_goal,
@@ -156,8 +154,8 @@ export const getUserSettings = async (): Promise<HourGoal> => {
           workStartTime: newSettings.work_start_time,
           workEndTime: newSettings.work_end_time,
         };
-      } catch (createErr: any) {
-        console.log('⚙️ Falha ao criar configurações:', createErr.message || createErr);
+      } catch (createErr) {
+        handleSupabaseError(createErr, 'createDefaultSettings');
         return mockHourGoal;
       }
     }
@@ -168,35 +166,36 @@ export const getUserSettings = async (): Promise<HourGoal> => {
       workStartTime: data.work_start_time,
       workEndTime: data.work_end_time,
     };
-  } catch (err: any) {
-    console.log('⚙️ Erro geral ao obter configurações:', err.message || err);
+  } catch (err) {
+    handleSupabaseError(err, 'getUserSettings');
     return mockHourGoal;
   }
 };
 
 export const updateUserSettings = async (settings: Partial<HourGoal>) => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('⚙️ Mock: Atualizando configurações:', settings);
-    return;
+  if (!isSupabaseConfigured || !supabase) return;
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const updateData: any = {};
+    if (settings.dailyGoal !== undefined) updateData.daily_goal = settings.dailyGoal;
+    if (settings.weeklyGoal !== undefined) updateData.weekly_goal = settings.weeklyGoal;
+    if (settings.workStartTime !== undefined) updateData.work_start_time = settings.workStartTime;
+    if (settings.workEndTime !== undefined) updateData.work_end_time = settings.workEndTime;
+
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({
+        user_id: user.id,
+        ...updateData,
+      });
+
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, 'updateUserSettings');
   }
-
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
-
-  const updateData: any = {};
-  if (settings.dailyGoal !== undefined) updateData.daily_goal = settings.dailyGoal;
-  if (settings.weeklyGoal !== undefined) updateData.weekly_goal = settings.weeklyGoal;
-  if (settings.workStartTime !== undefined) updateData.work_start_time = settings.workStartTime;
-  if (settings.workEndTime !== undefined) updateData.work_end_time = settings.workEndTime;
-
-  const { error } = await supabase
-    .from('user_settings')
-    .upsert({
-      user_id: user.id,
-      ...updateData,
-    });
-
-  if (error) throw error;
 };
 
 // ===============================
@@ -204,17 +203,11 @@ export const updateUserSettings = async (settings: Partial<HourGoal>) => {
 // ===============================
 
 export const getProjects = async (): Promise<Project[]> => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('📋 Mock: Retornando projetos mock');
-    return mockProjects;
-  }
+  if (!isSupabaseConfigured || !supabase) return mockProjects;
 
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      console.log('📋 Usuário não autenticado, retornando lista vazia');
-      return [];
-    }
+    if (!user) return [];
 
     const { data, error } = await supabase
       .from('projects')
@@ -223,204 +216,208 @@ export const getProjects = async (): Promise<Project[]> => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.log('📋 Erro detalhado ao buscar projetos:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-      
-      if (error.code === '42P01') {
-        console.log('📋 Tabela projects não existe, retornando lista vazia');
-        return [];
-      }
-      console.warn('📋 Problema ao buscar projetos, retornando lista vazia');
-      return [];
+      if (error.code === '42P01') return []; // Tabela não existe
+      throw error;
     }
 
     return data || [];
-  } catch (err: any) {
-    console.log('📋 Erro geral ao obter projetos:', err.message || err);
+  } catch (err) {
+    handleSupabaseError(err, 'getProjects');
     return [];
   }
 };
 
 export const createProject = async (projectData: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('📋 Mock: Criando projeto:', projectData.nome);
     return { id: 'mock-project-id', ...projectData, user_id: 'mock-user-id' };
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({
-      ...projectData,
-      user_id: user.id,
-    })
-    .select()
-    .single();
+    // Remover campos não existentes na tabela
+    const { nome, client_id, status, descricao } = projectData;
+    const cleanData = { nome, client_id, status, descricao };
 
-  if (error) throw error;
-  return data;
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({ ...cleanData, user_id: user.id })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    throw handleSupabaseError(error, 'createProject');
+  }
 };
 
 export const updateProject = async (id: string, projectData: Partial<Project>) => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('📋 Mock: Atualizando projeto:', id, projectData);
     return { id, ...projectData };
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-  const { data, error } = await supabase
-    .from('projects')
-    .update(projectData)
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .select()
-    .single();
+    // Remover campos não existentes na tabela
+    const cleanData: Partial<Project> = {};
+    if ('nome' in projectData) cleanData.nome = projectData.nome;
+    if ('client_id' in projectData) cleanData.client_id = projectData.client_id;
+    if ('status' in projectData) cleanData.status = projectData.status;
+    if ('descricao' in projectData) cleanData.descricao = projectData.descricao;
 
-  if (error) throw error;
-  return data;
+    const { data, error } = await supabase
+      .from('projects')
+      .update(cleanData)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    throw handleSupabaseError(error, 'updateProject');
+  }
 };
 
 export const deleteProject = async (id: string) => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('📋 Mock: Deletando projeto:', id);
-    return;
+  if (!isSupabaseConfigured || !supabase) return;
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, 'deleteProject');
   }
-
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
-
-  const { error } = await supabase
-    .from('projects')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (error) throw error;
 };
 
 // ===============================
 // TIME ENTRIES FUNCTIONS
 // ===============================
 
-export const getTimeEntries = async (): Promise<TimeEntry[]> => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('⏰ Mock: Retornando apontamentos mock');
-    return mockTimeEntries;
-  }
+export const getTimeEntries = async (startDate?: Date, endDate?: Date): Promise<TimeEntry[]> => {
+  if (!isSupabaseConfigured || !supabase) return mockTimeEntries;
 
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      console.log('⏰ Usuário não autenticado, retornando lista vazia');
-      return [];
-    }
+    if (!user) return [];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('time_entries')
       .select('*')
       .eq('user_id', user.id)
       .order('data', { ascending: false });
 
+    // Optimization: Filter at database level if dates provided
+    if (startDate) {
+      query = query.gte('data', startDate.toISOString().split('T')[0]);
+    }
+    if (endDate) {
+      query = query.lte('data', endDate.toISOString().split('T')[0]);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
-      console.log('⏰ Erro detalhado ao buscar apontamentos:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-      
-      if (error.code === '42P01') {
-        console.log('⏰ Tabela time_entries não existe, retornando lista vazia');
-        return [];
-      }
-      console.warn('⏰ Problema ao buscar apontamentos, retornando lista vazia');
-      return [];
+      if (error.code === '42P01') return []; 
+      throw error;
     }
 
     return data || [];
-  } catch (err: any) {
-    console.log('⏰ Erro geral ao obter apontamentos:', err.message || err);
+  } catch (err) {
+    handleSupabaseError(err, 'getTimeEntries');
     return [];
   }
 };
 
 export const createTimeEntry = async (entryData: Omit<TimeEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('⏰ Mock: Criando apontamento:', entryData);
     return { id: 'mock-entry-id', ...entryData, user_id: 'mock-user-id' };
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-  const { data, error } = await supabase
-    .from('time_entries')
-    .insert({
-      ...entryData,
-      user_id: user.id,
-    })
-    .select()
-    .single();
+    const { data, error } = await supabase
+      .from('time_entries')
+      .insert({ ...entryData, user_id: user.id })
+      .select()
+      .single();
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    throw handleSupabaseError(error, 'createTimeEntry');
+  }
 };
 
 export const updateTimeEntry = async (id: string, entryData: Partial<TimeEntry>) => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('⏰ Mock: Atualizando apontamento:', id, entryData);
     return { id, ...entryData };
   }
 
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-  const { data, error } = await supabase
-    .from('time_entries')
-    .update(entryData)
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .select()
-    .single();
+    const { data, error } = await supabase
+      .from('time_entries')
+      .update(entryData)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    throw handleSupabaseError(error, 'updateTimeEntry');
+  }
 };
 
 export const deleteTimeEntry = async (id: string) => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('⏰ Mock: Deletando apontamento:', id);
-    return;
+  if (!isSupabaseConfigured || !supabase) return;
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { error } = await supabase
+      .from('time_entries')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, 'deleteTimeEntry');
   }
-
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
-
-  const { error } = await supabase
-    .from('time_entries')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (error) throw error;
 };
 
 // ===============================
-// DASHBOARD CALCULATIONS
+// DASHBOARD CALCULATIONS (OPTIMIZED)
 // ===============================
 
 export const calculateDailySummary = (date: Date, entries: TimeEntry[]): DailySummary => {
-  const dayEntries = entries.filter(entry => 
-    parseSupabaseDate(entry.data).toDateString() === date.toDateString()
-  );
+  const dateStr = date.toISOString().split('T')[0];
+  const dayEntries = entries.filter(entry => {
+    // Determine if entry.data is a string or Date object to handle potentially mixed types gracefully
+    const entryDateStr = typeof entry.data === 'string' ? entry.data : (entry.data as any).toISOString().split('T')[0];
+    return entryDateStr === dateStr || parseSupabaseDate(entry.data).toDateString() === date.toDateString();
+  });
   
   return {
     date,
@@ -430,59 +427,62 @@ export const calculateDailySummary = (date: Date, entries: TimeEntry[]): DailySu
 };
 
 export const calculateWeeklySummary = async (): Promise<WeeklySummary> => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('📊 Mock: Retornando resumo semanal mock');
-    return getMockWeekSummary();
-  }
+  if (!isSupabaseConfigured || !supabase) return getMockWeekSummary();
 
   const today = new Date();
   const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay());
+  weekStart.setDate(today.getDate() - today.getDay()); // Sunday
   
   const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setDate(weekStart.getDate() + 6); // Saturday
   
-  const entries = await getTimeEntries();
+  // Optimization: Fetch only relevant entries for the week from DB
+  const entries = await getTimeEntries(weekStart, weekEnd);
+  
+  // Projects still needed for names, could be optimized if we have many projects
   const projects = await getProjects();
-  
-  const weekEntries = entries.filter(entry => {
-    const entryDate = parseSupabaseDate(entry.data);
-    return entryDate >= weekStart && entryDate <= weekEnd;
-  });
+  const projectMap = new Map(projects.map(p => [p.id, p]));
   
   const dailyBreakdown: DailySummary[] = [];
   for (let i = 0; i < 7; i++) {
     const date = new Date(weekStart);
     date.setDate(weekStart.getDate() + i);
-    dailyBreakdown.push(calculateDailySummary(date, weekEntries));
+    dailyBreakdown.push(calculateDailySummary(date, entries));
   }
   
-  const projectBreakdown = projects.map(project => {
-    const projectEntries = weekEntries.filter(entry => entry.project_id === project.id);
-    return {
-      projectId: project.id,
-      projectName: project.nome,
-      hours: projectEntries.reduce((sum, entry) => sum + Number(entry.horas), 0),
-    };
-  }).filter(item => item.hours > 0);
+  // Calculate project breakdown
+  const projectHours = new Map<string, number>();
+  
+  entries.forEach(entry => {
+    const current = projectHours.get(entry.project_id) || 0;
+    projectHours.set(entry.project_id, current + Number(entry.horas));
+  });
+  
+  const projectBreakdown = Array.from(projectHours.entries())
+    .map(([projectId, hours]) => ({
+      projectId,
+      projectName: projectMap.get(projectId)?.nome || 'Projeto Desconhecido',
+      hours
+    }))
+    .filter(item => item.hours > 0)
+    .sort((a, b) => b.hours - a.hours);
   
   return {
     weekStart,
     weekEnd,
-    totalHours: weekEntries.reduce((sum, entry) => sum + Number(entry.horas), 0),
+    totalHours: entries.reduce((sum, entry) => sum + Number(entry.horas), 0),
     dailyBreakdown,
     projectBreakdown,
   };
 };
 
 export const getTodaySummary = async (): Promise<DailySummary> => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('📊 Mock: Retornando resumo diário mock');
-    return getMockTodaySummary();
-  }
+  if (!isSupabaseConfigured || !supabase) return getMockTodaySummary();
 
-  const entries = await getTimeEntries();
-  return calculateDailySummary(new Date(), entries);
+  const today = new Date();
+  // Optimization: Fetch only today's entries
+  const entries = await getTimeEntries(today, today);
+  return calculateDailySummary(today, entries);
 };
 
 // ===============================
@@ -491,7 +491,6 @@ export const getTodaySummary = async (): Promise<DailySummary> => {
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('👤 Mock: Retornando perfil mock');
     return {
       id: 'mock-profile-id',
       user_id: 'mock-user-id',
@@ -504,10 +503,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
 
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      console.log('👤 Usuário não autenticado');
-      return null;
-    }
+    if (!user) return null;
 
     const { data, error } = await supabase
       .from('user_profiles')
@@ -516,30 +512,19 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       .maybeSingle();
 
     if (error) {
-      console.log('👤 Erro ao buscar perfil:', {
-        code: error.code,
-        message: error.message
-      });
-      
-      if (error.code === '42P01') {
-        console.log('👤 Tabela user_profiles não existe');
-        return null;
-      }
-      return null;
+      if (error.code === '42P01') return null;
+      throw error;
     }
 
     return data;
-  } catch (err: any) {
-    console.log('👤 Erro geral ao obter perfil:', err.message || err);
+  } catch (err) {
+    handleSupabaseError(err, 'getUserProfile');
     return null;
   }
 };
 
 export const updateUserProfile = async (profileData: Partial<Omit<UserProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('👤 Mock: Atualizando perfil:', profileData);
-    return;
-  }
+  if (!isSupabaseConfigured || !supabase) return;
 
   try {
     const user = await getCurrentUser();
@@ -552,32 +537,9 @@ export const updateUserProfile = async (profileData: Partial<Omit<UserProfile, '
         ...profileData,
       });
 
-    if (error) {
-      console.error('👤 Erro detalhado ao atualizar perfil:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-
-      if (error.code === '42P01') {
-        throw new Error('Tabela user_profiles não existe no banco de dados');
-      } else if (error.code === '23503') {
-        throw new Error('Erro de referência - usuário não encontrado');
-      } else if (error.code === '42501') {
-        throw new Error('Permissão negada - verifique as políticas RLS');
-      } else {
-        throw new Error(error.message || 'Erro desconhecido ao atualizar perfil');
-      }
-    }
-  } catch (err: any) {
-    // Re-throw custom errors
-    if (err.message && err.message.includes('Tabela') || err.message.includes('Permissão') || err.message.includes('referência')) {
-      throw err;
-    }
-    // Handle unexpected errors
-    console.error('👤 Erro inesperado:', err);
-    throw new Error('Erro inesperado ao atualizar perfil: ' + (err.message || err));
+    if (error) throw error;
+  } catch (err) {
+    throw handleSupabaseError(err, 'updateUserProfile');
   }
 };
 
@@ -587,7 +549,6 @@ export const updateUserProfile = async (profileData: Partial<Omit<UserProfile, '
 
 export const getUserPreferences = async (): Promise<UserPreferences | null> => {
   if (!isSupabaseConfigured || !supabase) {
-    console.log('⚙️ Mock: Retornando preferências mock');
     return {
       id: 'mock-preferences-id',
       user_id: 'mock-user-id',
@@ -605,10 +566,7 @@ export const getUserPreferences = async (): Promise<UserPreferences | null> => {
 
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      console.log('⚙️ Usuário não autenticado');
-      return null;
-    }
+    if (!user) return null;
 
     const { data, error } = await supabase
       .from('user_preferences')
@@ -617,63 +575,43 @@ export const getUserPreferences = async (): Promise<UserPreferences | null> => {
       .maybeSingle();
 
     if (error) {
-      console.log('⚙️ Erro ao buscar preferências:', {
-        code: error.code,
-        message: error.message
-      });
-      
-      if (error.code === '42P01') {
-        console.log('⚙️ Tabela user_preferences não existe');
-        return null;
-      }
-      return null;
+       if (error.code === '42P01') return null;
+       throw error;
     }
 
     return data;
-  } catch (err: any) {
-    console.log('⚙️ Erro geral ao obter preferências:', err.message || err);
+  } catch (err) {
+    handleSupabaseError(err, 'getUserPreferences');
     return null;
   }
 };
 
 export const updateUserPreferences = async (preferencesData: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('⚙️ Mock: Atualizando preferências:', preferencesData);
-    return;
+  if (!isSupabaseConfigured || !supabase) return;
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { error } = await supabase
+      .from('user_preferences')
+      .upsert({
+        user_id: user.id,
+        ...preferencesData,
+      });
+
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, 'updateUserPreferences');
   }
-
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Usuário não autenticado');
-
-  const { error } = await supabase
-    .from('user_preferences')
-    .upsert({
-      user_id: user.id,
-      ...preferencesData,
-    });
-
-  if (error) throw error;
 };
 
 // ===============================
-// COMPLETE USER SETTINGS (ENHANCED)
+// COMPLETE USER SETTINGS
 // ===============================
 
 export const getUserSettingsComplete = async (): Promise<UserSettings | null> => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('⚙️ Mock: Retornando configurações completas mock');
-    return {
-      id: 'mock-settings-id',
-      user_id: 'mock-user-id',
-      daily_goal: 6,
-      weekly_goal: 30,
-      work_start_time: '09:00',
-      work_end_time: '17:00',
-      timezone: 'America/Sao_Paulo',
-      hour_format: '24h',
-      date_format: 'dd/MM/yyyy',
-    };
-  }
+  if (!isSupabaseConfigured || !supabase) return null;
 
   try {
     const user = await getCurrentUser();
@@ -685,97 +623,36 @@ export const getUserSettingsComplete = async (): Promise<UserSettings | null> =>
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (error) {
-      console.log('⚙️ Erro ao buscar configurações completas:', error);
-      return null;
-    }
+    if (error) throw error;
 
     return data;
-  } catch (err: any) {
-    console.log('⚙️ Erro geral ao obter configurações completas:', err.message || err);
+  } catch (err) {
+    handleSupabaseError(err, 'getUserSettingsComplete');
     return null;
   }
 };
 
 export const updateUserSettingsComplete = async (settingsData: Partial<Omit<UserSettings, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
-  if (!isSupabaseConfigured || !supabase) {
-    console.log('⚙️ Mock: Atualizando configurações completas:', settingsData);
-    return;
-  }
+  if (!isSupabaseConfigured || !supabase) return;
 
   try {
     const user = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Primeiro verificar se o registro já existe
-    const { data: existingSettings, error: selectError } = await supabase
+    const { error } = await supabase
       .from('user_settings')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (selectError && selectError.code !== 'PGRST116') {
-      console.error('⚙️ Erro ao verificar configurações existentes:', selectError);
-      throw new Error('Erro ao verificar configurações existentes');
-    }
-
-    let error;
-
-    if (existingSettings) {
-      // Atualizar registro existente
-      const { error: updateError } = await supabase
-        .from('user_settings')
-        .update(settingsData)
-        .eq('user_id', user.id);
-
-      error = updateError;
-    } else {
-      // Criar novo registro
-      const { error: insertError } = await supabase
-        .from('user_settings')
-        .insert({
-          user_id: user.id,
-          ...settingsData,
-        });
-
-      error = insertError;
-    }
-
-    if (error) {
-      console.error('⚙️ Erro detalhado ao atualizar configurações:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
+      .upsert({ 
+        user_id: user.id,
+        ...settingsData 
       });
 
-      if (error.code === '42P01') {
-        throw new Error('Tabela user_settings não existe no banco de dados');
-      } else if (error.code === '23503') {
-        throw new Error('Erro de referência - usuário não encontrado');
-      } else if (error.code === '42501') {
-        throw new Error('Permissão negada - verifique as políticas RLS');
-      } else if (error.code === '23505') {
-        throw new Error('Conflito: configurações já existem para este usuário');
-      } else {
-        throw new Error(error.message || 'Erro desconhecido ao atualizar configurações');
-      }
-    }
-  } catch (err: any) {
-    // Re-throw custom errors
-    if (err.message && (err.message.includes('Tabela') || err.message.includes('Permissão') || err.message.includes('referência') || err.message.includes('Conflito'))) {
-      throw err;
-    }
-    // Handle unexpected errors
-    console.error('⚙️ Erro inesperado:', err);
-    throw new Error('Erro inesperado ao atualizar configurações: ' + (err.message || err));
+    if (error) throw error;
+  } catch (err) {
+    throw handleSupabaseError(err, 'updateUserSettingsComplete');
   }
 };
 
-// ===============================
-// EXPORT FUNCTIONS
-// ===============================
-
+// Export function remains the same
 export const exportToCSV = (data: any[], filename: string) => {
   console.log('📄 Exportando CSV:', filename, 'com', data.length, 'registros');
   

@@ -9,7 +9,9 @@ import {
   Clock4, 
   Briefcase, 
   Settings, 
-  LogOut
+  LogOut,
+  Building2,
+  FileText
 } from 'lucide-react';
 import { logout } from '@/lib/supabase-placeholders';
 
@@ -34,6 +36,16 @@ const sidebarItems: SidebarItem[] = [
     href: '/projects',
     label: 'Projetos',
     icon: Briefcase,
+  },
+  {
+    href: '/clients',
+    label: 'Clientes',
+    icon: Building2,
+  },
+  {
+    href: '/reports',
+    label: 'Relatórios',
+    icon: FileText,
   },
   {
     href: '/profile',

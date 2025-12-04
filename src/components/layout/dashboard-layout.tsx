@@ -1,7 +1,6 @@
 'use client';
 
 import { Sidebar } from './sidebar';
-import { Topbar } from './topbar';
 import { BottomNav } from './bottom-nav';
 
 interface DashboardLayoutProps {
@@ -13,7 +12,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
       <div className="flex-1 lg:ml-64">
-        <Topbar />
         <main className="flex-1 p-4 pb-24 lg:p-6">
           {children}
         </main>

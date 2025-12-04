@@ -10,8 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Edit2, Trash2, Plus, Filter, MoreHorizontal, Clock, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getProjects, getTimeEntries, deleteProject, updateProject } from '@/lib/supabase-client';
+import { getClients } from '@/lib/client-service';
 import { SwipeableItem } from '@/components/ui/swipeable-item';
-import { Project, TimeEntry } from '@/types/db';
+import { Project, TimeEntry, Client } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { parseSupabaseDate } from '@/lib/utils';
@@ -20,6 +21,7 @@ import { ProjectForm } from './project-form';
 export function ProjectTable() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -33,17 +35,25 @@ export function ProjectTable() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [projectsData, entriesData] = await Promise.all([
+      const [projectsData, entriesData, clientsData] = await Promise.all([
         getProjects(),
         getTimeEntries(),
+        getClients(),
       ]);
       setProjects(projectsData);
       setTimeEntries(entriesData);
+      setClients(clientsData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getClientName = (clientId?: string) => {
+    if (!clientId) return 'Cliente não encontrado';
+    const client = clients.find(c => c.id === clientId);
+    return client?.nome || 'Cliente não encontrado';
   };
 
   const getProjectHours = (projectId: string) => {
@@ -61,8 +71,9 @@ export function ProjectTable() {
   };
 
   const filteredProjects = projects.filter(project => {
+    const clientName = getClientName(project.client_id);
     const matchesSearch = project.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.cliente.toLowerCase().includes(searchTerm.toLowerCase());
+                         clientName.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = selectedStatus === 'all' || project.status === selectedStatus;
     
@@ -217,7 +228,7 @@ export function ProjectTable() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="font-medium">{project.cliente}</span>
+                          <span className="font-medium">{getClientName(project.client_id)}</span>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(project.status)}
@@ -305,7 +316,7 @@ export function ProjectTable() {
                         <div className="space-y-1">
                           <div className="font-medium">{project.nome}</div>
                           <div className="text-sm text-muted-foreground">
-                            {project.cliente}
+                            {getClientName(project.client_id)}
                           </div>
                         </div>
                         {getStatusBadge(project.status)}

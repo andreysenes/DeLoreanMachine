@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
 import { createProject, updateProject } from '@/lib/supabase-client';
-import { Project } from '@/types/db';
+import { getClients } from '@/lib/client-service';
+import { Project, Client } from '@/types/db';
 
 const formSchema = z.object({
   nome: z.string().min(1, 'Nome do projeto é obrigatório').max(100, 'Nome muito longo'),
-  cliente: z.string().min(1, 'Nome do cliente é obrigatório').max(100, 'Nome muito longo'),
+  client_id: z.string().min(1, 'Cliente é obrigatório'),
   status: z.enum(['ativo', 'inativo'], { message: 'Status é obrigatório' }),
   descricao: z.string().max(500, 'Descrição muito longa').optional(),
 });
@@ -32,12 +33,13 @@ interface ProjectFormProps {
 
 export function ProjectForm({ open, onOpenChange, onSuccess, projectToEdit }: ProjectFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       nome: '',
-      cliente: '',
+      client_id: '',
       status: 'ativo',
       descricao: '',
     },
@@ -47,23 +49,29 @@ export function ProjectForm({ open, onOpenChange, onSuccess, projectToEdit }: Pr
 
   useEffect(() => {
     if (open) {
+      getClients().then(setClients);
+      
       if (projectToEdit) {
         form.reset({
           nome: projectToEdit.nome,
-          cliente: projectToEdit.cliente,
+          client_id: projectToEdit.client_id || '',
           status: projectToEdit.status,
           descricao: projectToEdit.descricao || '',
         });
       } else {
         form.reset({
           nome: '',
-          cliente: '',
+          client_id: '',
           status: 'ativo',
           descricao: '',
         });
       }
     }
   }, [open, projectToEdit, form]);
+
+  const handleClientSelect = (clientId: string) => {
+    form.setValue('client_id', clientId);
+  };
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -72,14 +80,14 @@ export function ProjectForm({ open, onOpenChange, onSuccess, projectToEdit }: Pr
       if (isEditing && projectToEdit) {
         await updateProject(projectToEdit.id, {
           nome: data.nome,
-          cliente: data.cliente,
+          client_id: data.client_id,
           status: data.status,
           descricao: data.descricao || undefined,
         });
       } else {
         await createProject({
           nome: data.nome,
-          cliente: data.cliente,
+          client_id: data.client_id,
           status: data.status,
           descricao: data.descricao || undefined,
         });
@@ -114,7 +122,7 @@ export function ProjectForm({ open, onOpenChange, onSuccess, projectToEdit }: Pr
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Nome do Projeto */}
               <FormField
                 control={form.control}
@@ -137,17 +145,28 @@ export function ProjectForm({ open, onOpenChange, onSuccess, projectToEdit }: Pr
               {/* Cliente */}
               <FormField
                 control={form.control}
-                name="cliente"
+                name="client_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cliente</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Ex: Empresa XYZ"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                    </FormControl>
+                    <Select 
+                      onValueChange={handleClientSelect} 
+                      value={field.value} 
+                      disabled={isLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um cliente..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -220,7 +239,7 @@ export function ProjectForm({ open, onOpenChange, onSuccess, projectToEdit }: Pr
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Salvando...
                   </>
                 ) : (

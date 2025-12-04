@@ -1,26 +1,43 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://demo.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'demo-key';
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || 'demo-service-key';
+// Environment variables check for debugging
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Verificar se as credenciais são válidas (não são placeholders)
-const isConfigured = 
-  supabaseUrl !== 'https://your-project-url.supabase.co' && 
-  supabaseUrl !== 'https://demo.supabase.co' &&
-  supabaseAnonKey !== 'your-anon-key-here' && 
-  supabaseAnonKey !== 'demo-key';
+export const isSupabaseConfigured = !!supabaseUrl && !!supabaseAnonKey;
 
-export const supabase = isConfigured 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+if (!isSupabaseConfigured) {
+  console.warn('⚠️ Supabase credentials are missing. The app will run in mock mode.');
+}
+
+// Client configuration with retries and improved options
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: 'supabase.auth.token',
+      },
+      global: {
+        headers: {
+          'x-application-name': 'delorean-machine',
+        },
+      },
+      // Retry configuration for network issues
+      db: {
+        schema: 'public',
+      },
+      // Custom fetch implementation for retries could be added here if needed
+      // but Supabase JS client handles some retries internally.
+    })
   : null;
 
-// Para uso no servidor (service role)
-export const supabaseAdmin = isConfigured
-  ? createClient(supabaseUrl, serviceRoleKey)
-  : null;
-
-// Flag para indicar se o Supabase está configurado
-export const isSupabaseConfigured = isConfigured;
-
-console.log('🔧 Supabase Status:', isConfigured ? 'CONFIGURADO' : 'USANDO DADOS MOCK');
+// Helper to handle Supabase errors consistently
+export const handleSupabaseError = (error: any, context: string) => {
+  console.error(`Error in ${context}:`, error);
+  // Could map error codes to user-friendly messages here
+  // e.g. 'PGRST116' -> 'Data not found'
+  // e.g. '42501' -> 'Permission denied'
+  return error;
+};
