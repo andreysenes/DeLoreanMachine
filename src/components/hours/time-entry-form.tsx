@@ -14,7 +14,8 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format, addDays, subDays, startOfToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getProjects, createTimeEntry, updateTimeEntry } from '@/lib/supabase-client';
-import { Project, TimeEntry } from '@/types/db';
+import { getClients } from '@/lib/client-service';
+import { Project, TimeEntry, Client } from '@/types/db';
 import { parseSupabaseDate } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -51,6 +52,7 @@ const functions = [
 export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit, initialDate }: TimeEntryFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
   const form = useForm<FormData>({
@@ -96,13 +98,22 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit, init
   const loadProjects = async () => {
     try {
       setIsLoadingProjects(true);
-      const projectData = await getProjects();
+      const [projectData, clientData] = await Promise.all([
+        getProjects(),
+        getClients()
+      ]);
       setProjects(projectData.filter(p => p.status === 'ativo'));
+      setClients(Array.isArray(clientData) ? clientData : []);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
     } finally {
       setIsLoadingProjects(false);
     }
+  };
+
+  const getClientName = (clientId?: string) => {
+    if (!clientId) return '';
+    return clients.find(c => c.id === clientId)?.nome || '';
   };
 
   const onSubmit = async (data: FormData) => {
@@ -267,7 +278,7 @@ export function TimeEntryForm({ open, onOpenChange, onSuccess, entryToEdit, init
                         <SelectItem key={project.id} value={project.id}>
                           <div>
                             <div className="font-medium">{project.nome}</div>
-                            <div className="text-sm text-gray-500">{project.cliente}</div>
+                            <div className="text-sm text-gray-500">{getClientName(project.client_id)}</div>
                           </div>
                         </SelectItem>
                       ))}
