@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Clock4, Briefcase, User } from 'lucide-react';
+import { LayoutDashboard, Clock4, Briefcase, User, Building2, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function BottomNav() {
@@ -26,6 +26,16 @@ export function BottomNav() {
       icon: Briefcase,
     },
     {
+      href: '/clients',
+      label: 'Clientes',
+      icon: Building2,
+    },
+    {
+      href: '/reports',
+      label: 'Relatórios',
+      icon: FileText,
+    },
+    {
       href: '/profile',
       label: 'Perfil',
       icon: User,
@@ -34,7 +44,7 @@ export function BottomNav() {
 
   return (
     <div className="fixed bottom-0 left-0 z-50 w-full h-16 border-t bg-background lg:hidden pb-safe">
-      <div className="grid h-full grid-cols-4 mx-auto">
+      <div className="grid h-full grid-cols-6 mx-auto">
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -43,7 +53,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className="inline-flex flex-col items-center justify-center px-5 transition-colors hover:bg-muted/50 group"
+              className="flex flex-col items-center justify-center w-full px-1 transition-colors hover:bg-muted/50 group"
             >
               <div className="relative flex flex-col items-center justify-center gap-1">
                 <Icon 
