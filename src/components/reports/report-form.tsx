@@ -57,8 +57,7 @@ export function ReportForm() {
 
   useEffect(() => {
     if (selectedClientId) {
-      const client = clients.find(c => c.id === selectedClientId);
-      const filtered = projects.filter(p => p.client_id === selectedClientId || (client && p.cliente === client.nome));
+      const filtered = projects.filter(p => p.client_id === selectedClientId);
       setFilteredProjects(filtered);
     } else {
       setFilteredProjects([]);
