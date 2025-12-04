@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Edit2, Trash2, Plus, Filter, Loader2, Clock } from 'lucide-react';
 import { getTimeEntries, getProjects, deleteTimeEntry } from '@/lib/supabase-client';
+import { getClients } from '@/lib/client-service';
 import { SwipeableItem } from '@/components/ui/swipeable-item';
-import { TimeEntry, Project } from '@/types/db';
+import { TimeEntry, Project, Client } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TimeEntryForm } from './time-entry-form';
@@ -19,6 +20,7 @@ import { parseSupabaseDate } from '@/lib/utils';
 export function TimeEntryTable() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProject, setSelectedProject] = useState('all');
@@ -33,12 +35,14 @@ export function TimeEntryTable() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [entriesData, projectsData] = await Promise.all([
+      const [entriesData, projectsData, clientsData] = await Promise.all([
         getTimeEntries(),
         getProjects(),
+        getClients(),
       ]);
       setEntries(entriesData);
       setProjects(projectsData);
+      setClients(Array.isArray(clientsData) ? clientsData : []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -53,7 +57,9 @@ export function TimeEntryTable() {
 
   const getProjectClient = (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
-    return project?.cliente || '';
+    if (!project || !project.client_id) return '';
+    const client = clients.find(c => c.id === project.client_id);
+    return client?.nome || '';
   };
 
   const getFunctionColor = (funcao: string) => {
