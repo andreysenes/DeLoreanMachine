@@ -26,7 +26,9 @@ import {
   exportToCSV,
   calculateWeeklySummary 
 } from '@/lib/supabase-client';
+import { getClients } from '@/lib/client-service';
 import { parseSupabaseDate } from '@/lib/utils';
+import { Client } from '@/types/db';
 
 interface ExportButtonsProps {
   variant?: 'button' | 'dropdown';
@@ -50,6 +52,7 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
   const [isMounted, setIsMounted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [exportSettings, setExportSettings] = useState<ExportSettings>({
     columns: {
       projeto: true,
@@ -64,16 +67,25 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
 
   useEffect(() => {
     setIsMounted(true);
-    loadProjects();
+    loadData();
   }, []);
 
-  const loadProjects = async () => {
+  const loadData = async () => {
     try {
-      const projectsList = await getProjects();
+      const [projectsList, clientsList] = await Promise.all([
+        getProjects(),
+        getClients()
+      ]);
       setProjects(projectsList || []);
+      setClients(Array.isArray(clientsList) ? clientsList : []);
     } catch (error) {
-      console.error('Erro ao carregar projetos:', error);
+      console.error('Erro ao carregar dados:', error);
     }
+  };
+
+  const getClientName = (clientId?: string) => {
+    if (!clientId) return '';
+    return clients.find(c => c.id === clientId)?.nome || '';
   };
 
   const handleExportTimeEntries = async () => {
@@ -121,7 +133,7 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
       // Formatar dados para CSV
       const csvData = projects.map(project => ({
         'Nome': project.nome,
-        'Cliente': project.cliente,
+        'Cliente': getClientName(project.client_id),
         'Status': project.status,
         'Descrição': project.descricao || '',
         'Criado em': new Date(project.created_at).toLocaleDateString('pt-BR')
@@ -353,7 +365,7 @@ export function ExportButtons({ variant = 'dropdown', size = 'sm' }: ExportButto
                     }}
                   />
                   <Label htmlFor={`project-${project.id}`} className="text-sm">
-                    {project.nome} - {project.cliente}
+                    {project.nome} - {getClientName(project.client_id)}
                   </Label>
                 </div>
               ))}
