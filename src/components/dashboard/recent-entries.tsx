@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Clock, ExternalLink } from 'lucide-react';
 import { getTimeEntries, getProjects } from '@/lib/supabase-client';
-import { TimeEntry, Project } from '@/types/db';
+import { getClients } from '@/lib/client-service';
+import { TimeEntry, Project, Client } from '@/types/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { parseSupabaseDate } from '@/lib/utils';
@@ -14,6 +15,7 @@ import { parseSupabaseDate } from '@/lib/utils';
 export function RecentEntries() {
   const [recentEntries, setRecentEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -21,13 +23,15 @@ export function RecentEntries() {
       try {
         setIsLoading(true);
         
-        const [entriesData, projectsData] = await Promise.all([
+        const [entriesData, projectsData, clientsData] = await Promise.all([
           getTimeEntries(),
           getProjects(),
+          getClients(),
         ]);
 
         setRecentEntries(entriesData.slice(0, 5)); // Pegar as 5 mais recentes
         setProjects(projectsData);
+        setClients(Array.isArray(clientsData) ? clientsData : []);
       } catch (error) {
         console.error('Erro ao carregar apontamentos recentes:', error);
       } finally {
@@ -45,7 +49,9 @@ export function RecentEntries() {
 
   const getProjectClient = (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
-    return project?.cliente || '';
+    if (!project || !project.client_id) return '';
+    const client = clients.find(c => c.id === project.client_id);
+    return client?.nome || '';
   };
 
   const getFunctionColor = (funcao: string) => {
