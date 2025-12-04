@@ -15,12 +15,12 @@ import { Client } from '@/types/db';
 const formSchema = z.object({
   nome: z.string().min(2, 'Nome é obrigatório'),
   cnpj: z.string().optional(),
-  horas_contratadas: z.coerce.number().min(0).default(0),
+  horas_contratadas: z.coerce.number().min(0),
   tipo_servico: z.string().optional(),
   contrato_id: z.string().optional(),
 });
 
-type FormData = z.infer<typeof formSchema>;
+type ClientFormData = z.infer<typeof formSchema>;
 
 interface ClientFormProps {
   open: boolean;
@@ -32,8 +32,8 @@ interface ClientFormProps {
 export function ClientForm({ open, onOpenChange, onSuccess, clientToEdit }: ClientFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<ClientFormData>({
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       nome: '',
       cnpj: '',
@@ -65,7 +65,7 @@ export function ClientForm({ open, onOpenChange, onSuccess, clientToEdit }: Clie
     }
   }, [open, clientToEdit, form]);
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: ClientFormData) => {
     try {
       setIsLoading(true);
       const payload = {
