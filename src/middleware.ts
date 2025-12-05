@@ -12,6 +12,13 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
+  // Redirect authenticated users away from login page
+  if (pathname.startsWith('/login') && token) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
   // Public routes that don't require authentication
   if (
     pathname.startsWith('/login') ||

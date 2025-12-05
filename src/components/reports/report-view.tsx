@@ -192,7 +192,7 @@ export function ReportView({ reportId }: { reportId: string }) {
           <h2 className="text-xl font-semibold tracking-tight">Detalhamento por Projeto</h2>
           
           {projects.length === 0 ? (
-            <Card className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+            <Card className="flex flex-col items-center justify-center py-0 text-center text-muted-foreground">
                <Briefcase className="w-12 h-12 mb-4 opacity-20" />
                <p>Nenhum registro encontrado neste período.</p>
             </Card>
