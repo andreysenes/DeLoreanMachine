@@ -44,11 +44,6 @@ const preferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']),
   language: z.enum(['pt-BR', 'en-US', 'es-ES']),
   week_start_day: z.number().min(0).max(6),
-  notifications_email: z.boolean(),
-  notifications_push: z.boolean(),
-  notifications_reminders: z.boolean(),
-  auto_track: z.boolean(),
-  show_decimal_hours: z.boolean(),
   export_format: z.enum(['csv', 'pdf', 'xlsx']),
 });
 
@@ -120,11 +115,6 @@ export default function ProfilePage() {
       theme: 'system',
       language: 'pt-BR',
       week_start_day: 1,
-      notifications_email: true,
-      notifications_push: true,
-      notifications_reminders: true,
-      auto_track: false,
-      show_decimal_hours: true,
       export_format: 'csv',
     },
   });
@@ -191,11 +181,6 @@ export default function ProfilePage() {
         theme: preferencesData.theme || 'system',
         language: preferencesData.language || 'pt-BR',
         week_start_day: preferencesData.week_start_day || 1,
-        notifications_email: preferencesData.notifications_email ?? true,
-        notifications_push: preferencesData.notifications_push ?? true,
-        notifications_reminders: preferencesData.notifications_reminders ?? true,
-        auto_track: preferencesData.auto_track ?? false,
-        show_decimal_hours: preferencesData.show_decimal_hours ?? true,
         export_format: preferencesData.export_format || 'csv',
       });
       
@@ -354,7 +339,7 @@ export default function ProfilePage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <Loader2 className="w-8 h-8 animate-spin" />
           <span className="ml-2">Carregando dados do usuário...</span>
         </div>
       </DashboardLayout>
@@ -374,15 +359,15 @@ export default function ProfilePage() {
         <Tabs defaultValue="profile" className="space-y-4">
           <TabsList>
             <TabsTrigger value="profile">
-              <User className="mr-2 h-4 w-4" />
+              <User className="w-4 h-4 mr-2" />
               Dados Pessoais
             </TabsTrigger>
             <TabsTrigger value="goals">
-              <Clock className="mr-2 h-4 w-4" />
+              <Clock className="w-4 h-4 mr-2" />
               Metas de Horas
             </TabsTrigger>
             <TabsTrigger value="preferences">
-              <Settings className="mr-2 h-4 w-4" />
+              <Settings className="w-4 h-4 mr-2" />
               Preferências
             </TabsTrigger>
           </TabsList>
@@ -441,7 +426,7 @@ export default function ProfilePage() {
                     />
                     <Button type="submit" disabled={isLoading}>
                       {isLoading ? 'Salvando...' : 'Salvar Alterações'}
-                      <Save className="ml-2 h-4 w-4" />
+                      <Save className="w-4 h-4 ml-2" />
                     </Button>
                   </form>
                 </Form>
@@ -535,7 +520,7 @@ export default function ProfilePage() {
                     
                     <Button type="submit" disabled={isLoading}>
                       {isLoading ? 'Salvando...' : 'Salvar Metas'}
-                      <Save className="ml-2 h-4 w-4" />
+                      <Save className="w-4 h-4 ml-2" />
                     </Button>
                   </form>
                 </Form>
@@ -627,7 +612,7 @@ export default function ProfilePage() {
                       
                       <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Salvando...' : 'Salvar Configurações'}
-                        <Save className="ml-2 h-4 w-4" />
+                        <Save className="w-4 h-4 ml-2" />
                       </Button>
                     </form>
                   </Form>
@@ -638,7 +623,7 @@ export default function ProfilePage() {
                 <CardHeader>
                   <CardTitle>Preferências Pessoais</CardTitle>
                   <CardDescription>
-                    Configure tema, idioma e notificações
+                    Configure tema e idioma
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -740,126 +725,10 @@ export default function ProfilePage() {
                         />
                       </div>
 
-                      <Separator className="my-4" />
-
-                      <div className="space-y-4">
-                        <h4 className="text-sm font-medium">Notificações</h4>
-                        
-                        <FormField
-                          control={preferencesForm.control}
-                          name="notifications_email"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Notificações por Email</FormLabel>
-                                <div className="text-sm text-muted-foreground">
-                                  Receber emails sobre atividades importantes
-                                </div>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={preferencesForm.control}
-                          name="notifications_push"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Notificações Push</FormLabel>
-                                <div className="text-sm text-muted-foreground">
-                                  Receber notificações no navegador
-                                </div>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={preferencesForm.control}
-                          name="notifications_reminders"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Lembretes</FormLabel>
-                                <div className="text-sm text-muted-foreground">
-                                  Receber lembretes para registrar horas
-                                </div>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <Separator className="my-4" />
-
-                      <div className="space-y-4">
-                        <h4 className="text-sm font-medium">Comportamento</h4>
-                        
-                        <FormField
-                          control={preferencesForm.control}
-                          name="auto_track"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Rastreamento Automático</FormLabel>
-                                <div className="text-sm text-muted-foreground">
-                                  Iniciar timer automaticamente baseado em atividades
-                                </div>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={preferencesForm.control}
-                          name="show_decimal_hours"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Horas Decimais</FormLabel>
-                                <div className="text-sm text-muted-foreground">
-                                  Mostrar horas em formato decimal (8.5h) ao invés de horário (8h30m)
-                                </div>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
                       
                       <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Salvando...' : 'Salvar Preferências'}
-                        <Save className="ml-2 h-4 w-4" />
+                        <Save className="w-4 h-4 ml-2" />
                       </Button>
                     </form>
                   </Form>
@@ -884,7 +753,7 @@ export default function ProfilePage() {
                         </p>
                       </div>
                       <Button variant="destructive" onClick={logout}>
-                        <LogOut className="mr-2 h-4 w-4" />
+                        <LogOut className="w-4 h-4 mr-2" />
                         Sair
                       </Button>
                     </div>
