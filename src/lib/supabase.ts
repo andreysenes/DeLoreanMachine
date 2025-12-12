@@ -1,18 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables check for debugging
+// Environment variables - usando Publishable key (pode ser exposta no cliente)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export const isSupabaseConfigured = !!supabaseUrl && !!supabaseAnonKey;
+export const isSupabaseConfigured = !!supabaseUrl && !!supabasePublishableKey;
 
 if (!isSupabaseConfigured) {
   console.warn('⚠️ Supabase credentials are missing. The app will run in mock mode.');
 }
 
 // Client configuration with retries and improved options
+// Usando Publishable key ao invés de anon key (mais seguro e recomendado)
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl!, supabaseAnonKey!, {
+  ? createClient(supabaseUrl!, supabasePublishableKey!, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,

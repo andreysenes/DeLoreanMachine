@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Briefcase, FileText, Edit2, Trash2, Plus } from 'lucide-react';
 import { ScrollAreaHorizontal } from '@/components/ui/scroll-area-horizontal';
 import { getTimeEntries, getProjects, deleteTimeEntry } from '@/lib/supabase-client';
@@ -395,36 +395,21 @@ export function HoursCalendar() {
 
       {/* Sheet de Detalhes */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent side="bottom" className="h-[85vh] sm:h-[100vh] sm:max-w-[540px] overflow-y-auto">
-           {/* Sheet content remains the same, just responsive side="bottom" on mobile might be nicer, but standard Side sheet is fine too. 
-               Actually user is used to side sheet on desktop, maybe bottom sheet on mobile? 
-               Shadcn Sheet `side` prop controls this. 
-               Let's make it `side={isMobile ? "bottom" : "right"}` logic.
-           */}
-          <SheetHeader className="mb-6">
+        <SheetContent side="right" className="sm:max-w-[540px] flex flex-col">
+          <SheetHeader>
             <SheetTitle>Apontamentos do Dia</SheetTitle>
             <SheetDescription>
               {selectedDate && format(selectedDate, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </SheetDescription>
           </SheetHeader>
-          
-          <div className="flex justify-end mb-6">
-            <Button onClick={() => {
-               if (selectedDate) handleNewEntry(selectedDate);
-               // Optional: close sheet? No, form opens in Dialog on top.
-            }}>
-               <Plus className="w-4 h-4 mr-2" />
-               Novo Apontamento
-            </Button>
-          </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 flex-1 overflow-y-auto px-6">
             <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
               <span className="font-medium">Total do dia</span>
               <span className="text-xl font-bold">{selectedDayTotal.toFixed(1)}h</span>
             </div>
 
-            <div className="pb-8 space-y-4">
+            <div className="pb-4 space-y-4">
               {selectedDayEntries.length > 0 ? (
                 selectedDayEntries.map((entry) => (
                   <div key={entry.id} className="p-4 space-y-3 transition-colors border rounded-lg hover:bg-accent/20">
@@ -468,6 +453,18 @@ export function HoursCalendar() {
               )}
             </div>
           </div>
+
+          <SheetFooter className="border-t pt-4 mt-auto">
+            <Button 
+              onClick={() => {
+                if (selectedDate) handleNewEntry(selectedDate);
+              }}
+              className="w-full bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Apontamento
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
 

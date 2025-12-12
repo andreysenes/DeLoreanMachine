@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,9 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { User, Clock, Settings, LogOut, Save, Loader2, RefreshCw } from 'lucide-react';
+import { User, Clock, Settings, LogOut, Loader2, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { 
   updateUserProfile,
   updateUserPreferences,
@@ -60,6 +60,18 @@ type SystemSettingsFormData = z.infer<typeof systemSettingsSchema>;
 
 export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Refs para armazenar valores anteriores para desfazer
+  const previousProfileRef = useRef<ProfileFormData | null>(null);
+  const previousGoalRef = useRef<GoalFormData | null>(null);
+  const previousPreferencesRef = useRef<PreferencesFormData | null>(null);
+  const previousSystemSettingsRef = useRef<SystemSettingsFormData | null>(null);
+  
+  // Refs para timeouts de debounce
+  const profileSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const goalSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const preferencesSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const systemSettingsSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hooks de cache para cada tipo de dados
   const {
@@ -138,38 +150,50 @@ export default function ProfilePage() {
     if (profileData && profileData !== prevProfileDataRef.current) {
       const { user, profile } = profileData;
       
+      let formData: ProfileFormData;
       if (user && profile) {
-        profileForm.reset({
+        formData = {
           nome: profile.first_name || '',
           sobrenome: profile.last_name || '',
           email: user.email || '',
-        });
+        };
       } else if (user) {
-        profileForm.reset({
+        formData = {
           nome: (user.user_metadata as any)?.nome || '',
           sobrenome: (user.user_metadata as any)?.sobrenome || '',
           email: user.email || '',
-        });
+        };
+      } else {
+        prevProfileDataRef.current = profileData;
+        return;
       }
       
+      profileForm.reset(formData);
+      previousProfileRef.current = { ...formData };
       prevProfileDataRef.current = profileData;
     }
   }, [profileData, profileForm]);
 
   useEffect(() => {
     if (settingsData && settingsData !== prevSettingsDataRef.current) {
-      goalForm.reset({
+      const goalData: GoalFormData = {
         dailyGoal: settingsData.daily_goal,
         weeklyGoal: settingsData.weekly_goal,
         workStartTime: settingsData.work_start_time,
         workEndTime: settingsData.work_end_time,
-      });
-
-      systemSettingsForm.reset({
+      };
+      
+      const systemData: SystemSettingsFormData = {
         timezone: settingsData.timezone || 'America/Sao_Paulo',
         hour_format: settingsData.hour_format || '24h',
         date_format: settingsData.date_format || 'dd/MM/yyyy',
-      });
+      };
+
+      goalForm.reset(goalData);
+      systemSettingsForm.reset(systemData);
+      
+      previousGoalRef.current = { ...goalData };
+      previousSystemSettingsRef.current = { ...systemData };
       
       prevSettingsDataRef.current = settingsData;
     }
@@ -177,26 +201,29 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (preferencesData && preferencesData !== prevPreferencesDataRef.current) {
-      preferencesForm.reset({
+      const formData: PreferencesFormData = {
         theme: preferencesData.theme || 'system',
         language: preferencesData.language || 'pt-BR',
         week_start_day: preferencesData.week_start_day || 1,
         export_format: preferencesData.export_format || 'csv',
-      });
+      };
+      
+      preferencesForm.reset(formData);
+      previousPreferencesRef.current = { ...formData };
       
       prevPreferencesDataRef.current = preferencesData;
     }
   }, [preferencesData, preferencesForm]);
 
-  const onProfileSubmit = async (data: ProfileFormData) => {
-    setIsLoading(true);
+  const saveProfile = useCallback(async (data: ProfileFormData, showToast = true) => {
+    // Capturar o valor anterior ANTES de salvar (para o undo funcionar corretamente)
+    const previousData = previousProfileRef.current ? { ...previousProfileRef.current } : null;
+    
     try {
       await updateUserProfile({
         first_name: data.nome,
         last_name: data.sobrenome,
       });
-      
-      console.log('✅ Perfil atualizado com sucesso!');
       
       // Atualizar o cache local com os dados atualizados
       if (profileData && profileData.profile) {
@@ -211,25 +238,31 @@ export default function ProfilePage() {
         mutateProfile(updatedProfileData);
       }
       
-      // Feedback visual simples
-      window.dispatchEvent(new CustomEvent('show-success', { 
-        detail: { message: 'Perfil atualizado com sucesso!' }
-      }));
+      // Atualizar o ref com os novos dados ANTES de mostrar o toast
+      previousProfileRef.current = { ...data };
       
+      if (showToast) {
+        toast.success('Perfil salvo automaticamente', {
+          action: previousData ? {
+            label: 'Desfazer',
+            onClick: () => {
+              profileForm.reset(previousData);
+              saveProfile(previousData, false);
+            },
+          } : undefined,
+        });
+      }
     } catch (error: any) {
       console.error('Erro ao atualizar perfil:', error);
       const errorMessage = error.message || 'Erro desconhecido ao atualizar perfil';
-      
-      window.dispatchEvent(new CustomEvent('show-error', { 
-        detail: { message: errorMessage }
-      }));
-    } finally {
-      setIsLoading(false);
+      toast.error(errorMessage);
     }
-  };
+  }, [profileData, mutateProfile, profileForm]);
 
-  const onGoalSubmit = async (data: GoalFormData) => {
-    setIsLoading(true);
+  const saveGoals = useCallback(async (data: GoalFormData, showToast = true) => {
+    // Capturar o valor anterior ANTES de salvar (para o undo funcionar corretamente)
+    const previousData = previousGoalRef.current ? { ...previousGoalRef.current } : null;
+    
     try {
       await updateUserSettingsComplete({
         daily_goal: data.dailyGoal,
@@ -237,8 +270,6 @@ export default function ProfilePage() {
         work_start_time: data.workStartTime,
         work_end_time: data.workEndTime,
       });
-      
-      console.log('✅ Metas atualizadas com sucesso!');
       
       // Atualizar o cache local com os dados atualizados
       if (settingsData) {
@@ -252,29 +283,33 @@ export default function ProfilePage() {
         mutateSettings(updatedSettingsData);
       }
       
-      // Feedback visual simples
-      window.dispatchEvent(new CustomEvent('show-success', { 
-        detail: { message: 'Metas atualizadas com sucesso!' }
-      }));
+      // Atualizar o ref com os novos dados ANTES de mostrar o toast
+      previousGoalRef.current = { ...data };
       
+      if (showToast) {
+        toast.success('Metas salvas automaticamente', {
+          action: previousData ? {
+            label: 'Desfazer',
+            onClick: () => {
+              goalForm.reset(previousData);
+              saveGoals(previousData, false);
+            },
+          } : undefined,
+        });
+      }
     } catch (error: any) {
       console.error('Erro ao atualizar metas:', error);
       const errorMessage = error.message || 'Erro desconhecido ao atualizar metas';
-      
-      window.dispatchEvent(new CustomEvent('show-error', { 
-        detail: { message: errorMessage }
-      }));
-    } finally {
-      setIsLoading(false);
+      toast.error(errorMessage);
     }
-  };
+  }, [settingsData, mutateSettings, goalForm]);
 
-  const onPreferencesSubmit = async (data: PreferencesFormData) => {
-    setIsLoading(true);
+  const savePreferences = useCallback(async (data: PreferencesFormData, showToast = true) => {
+    // Capturar o valor anterior ANTES de salvar (para o undo funcionar corretamente)
+    const previousData = previousPreferencesRef.current ? { ...previousPreferencesRef.current } : null;
+    
     try {
       await updateUserPreferences(data);
-      
-      console.log('✅ Preferências atualizadas com sucesso!');
       
       // Atualizar o cache local com os dados atualizados
       if (preferencesData) {
@@ -285,29 +320,33 @@ export default function ProfilePage() {
         mutatePreferences(updatedPreferencesData);
       }
       
-      // Feedback visual simples
-      window.dispatchEvent(new CustomEvent('show-success', { 
-        detail: { message: 'Preferências atualizadas com sucesso!' }
-      }));
+      // Atualizar o ref com os novos dados ANTES de mostrar o toast
+      previousPreferencesRef.current = { ...data };
       
+      if (showToast) {
+        toast.success('Preferências salvas automaticamente', {
+          action: previousData ? {
+            label: 'Desfazer',
+            onClick: () => {
+              preferencesForm.reset(previousData);
+              savePreferences(previousData, false);
+            },
+          } : undefined,
+        });
+      }
     } catch (error: any) {
       console.error('Erro ao atualizar preferências:', error);
       const errorMessage = error.message || 'Erro desconhecido ao atualizar preferências';
-      
-      window.dispatchEvent(new CustomEvent('show-error', { 
-        detail: { message: errorMessage }
-      }));
-    } finally {
-      setIsLoading(false);
+      toast.error(errorMessage);
     }
-  };
+  }, [preferencesData, mutatePreferences, preferencesForm]);
 
-  const onSystemSettingsSubmit = async (data: SystemSettingsFormData) => {
-    setIsLoading(true);
+  const saveSystemSettings = useCallback(async (data: SystemSettingsFormData, showToast = true) => {
+    // Capturar o valor anterior ANTES de salvar (para o undo funcionar corretamente)
+    const previousData = previousSystemSettingsRef.current ? { ...previousSystemSettingsRef.current } : null;
+    
     try {
       await updateUserSettingsComplete(data);
-      
-      console.log('✅ Configurações do sistema atualizadas com sucesso!');
       
       // Atualizar o cache local com os dados atualizados
       if (settingsData) {
@@ -318,22 +357,148 @@ export default function ProfilePage() {
         mutateSettings(updatedSettingsData);
       }
       
-      // Feedback visual simples
-      window.dispatchEvent(new CustomEvent('show-success', { 
-        detail: { message: 'Configurações do sistema atualizadas com sucesso!' }
-      }));
+      // Atualizar o ref com os novos dados ANTES de mostrar o toast
+      previousSystemSettingsRef.current = { ...data };
       
+      if (showToast) {
+        toast.success('Configurações salvas automaticamente', {
+          action: previousData ? {
+            label: 'Desfazer',
+            onClick: () => {
+              systemSettingsForm.reset(previousData);
+              saveSystemSettings(previousData, false);
+            },
+          } : undefined,
+        });
+      }
     } catch (error: any) {
       console.error('Erro ao atualizar configurações do sistema:', error);
       const errorMessage = error.message || 'Erro desconhecido ao atualizar configurações';
-      
-      window.dispatchEvent(new CustomEvent('show-error', { 
-        detail: { message: errorMessage }
-      }));
-    } finally {
-      setIsLoading(false);
+      toast.error(errorMessage);
     }
-  };
+  }, [settingsData, mutateSettings, systemSettingsForm]);
+
+  // Salvamento automático do perfil
+  useEffect(() => {
+    const subscription = profileForm.watch((data) => {
+      if (!profileData || !previousProfileRef.current) return;
+      
+      const hasChanges = 
+        data.nome !== previousProfileRef.current.nome ||
+        data.sobrenome !== previousProfileRef.current.sobrenome;
+      
+      if (!hasChanges) return;
+      
+      // Validar antes de salvar
+      if (!data.nome || data.nome.length < 2 || !data.sobrenome || data.sobrenome.length < 2) {
+        return;
+      }
+      
+      if (profileSaveTimeoutRef.current) {
+        clearTimeout(profileSaveTimeoutRef.current);
+      }
+      
+      profileSaveTimeoutRef.current = setTimeout(() => {
+        saveProfile(data as ProfileFormData);
+      }, 1000); // 1 segundo de debounce
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (profileSaveTimeoutRef.current) {
+        clearTimeout(profileSaveTimeoutRef.current);
+      }
+    };
+  }, [profileForm, profileData, saveProfile]);
+
+  // Salvamento automático de metas
+  useEffect(() => {
+    const subscription = goalForm.watch((data) => {
+      if (!settingsData || !previousGoalRef.current) return;
+      
+      const hasChanges = 
+        data.dailyGoal !== previousGoalRef.current.dailyGoal ||
+        data.weeklyGoal !== previousGoalRef.current.weeklyGoal ||
+        data.workStartTime !== previousGoalRef.current.workStartTime ||
+        data.workEndTime !== previousGoalRef.current.workEndTime;
+      
+      if (!hasChanges) return;
+      
+      if (goalSaveTimeoutRef.current) {
+        clearTimeout(goalSaveTimeoutRef.current);
+      }
+      
+      goalSaveTimeoutRef.current = setTimeout(() => {
+        saveGoals(data as GoalFormData);
+      }, 1000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (goalSaveTimeoutRef.current) {
+        clearTimeout(goalSaveTimeoutRef.current);
+      }
+    };
+  }, [goalForm, settingsData, saveGoals]);
+
+  // Salvamento automático de preferências
+  useEffect(() => {
+    const subscription = preferencesForm.watch((data) => {
+      if (!preferencesData || !previousPreferencesRef.current) return;
+      
+      const hasChanges = 
+        data.theme !== previousPreferencesRef.current.theme ||
+        data.language !== previousPreferencesRef.current.language ||
+        data.week_start_day !== previousPreferencesRef.current.week_start_day ||
+        data.export_format !== previousPreferencesRef.current.export_format;
+      
+      if (!hasChanges) return;
+      
+      if (preferencesSaveTimeoutRef.current) {
+        clearTimeout(preferencesSaveTimeoutRef.current);
+      }
+      
+      preferencesSaveTimeoutRef.current = setTimeout(() => {
+        savePreferences(data as PreferencesFormData);
+      }, 1000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (preferencesSaveTimeoutRef.current) {
+        clearTimeout(preferencesSaveTimeoutRef.current);
+      }
+    };
+  }, [preferencesForm, preferencesData, savePreferences]);
+
+  // Salvamento automático de configurações do sistema
+  useEffect(() => {
+    const subscription = systemSettingsForm.watch((data) => {
+      if (!settingsData || !previousSystemSettingsRef.current) return;
+      
+      const hasChanges = 
+        data.timezone !== previousSystemSettingsRef.current.timezone ||
+        data.hour_format !== previousSystemSettingsRef.current.hour_format ||
+        data.date_format !== previousSystemSettingsRef.current.date_format;
+      
+      if (!hasChanges) return;
+      
+      if (systemSettingsSaveTimeoutRef.current) {
+        clearTimeout(systemSettingsSaveTimeoutRef.current);
+      }
+      
+      systemSettingsSaveTimeoutRef.current = setTimeout(() => {
+        saveSystemSettings(data as SystemSettingsFormData);
+      }, 1000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (systemSettingsSaveTimeoutRef.current) {
+        clearTimeout(systemSettingsSaveTimeoutRef.current);
+      }
+    };
+  }, [systemSettingsForm, settingsData, saveSystemSettings]);
 
   if (isLoadingData) {
     return (
@@ -382,7 +547,7 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                  <form className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                       <FormField
                         control={profileForm.control}
@@ -424,10 +589,6 @@ export default function ProfilePage() {
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" disabled={isLoading}>
-                      {isLoading ? 'Salvando...' : 'Salvar Alterações'}
-                      <Save className="w-4 h-4 ml-2" />
-                    </Button>
                   </form>
                 </Form>
               </CardContent>
@@ -444,7 +605,7 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 <Form {...goalForm}>
-                  <form onSubmit={goalForm.handleSubmit(onGoalSubmit)} className="space-y-4">
+                  <form className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                       <FormField
                         control={goalForm.control}
@@ -517,11 +678,6 @@ export default function ProfilePage() {
                         />
                       </div>
                     </div>
-                    
-                    <Button type="submit" disabled={isLoading}>
-                      {isLoading ? 'Salvando...' : 'Salvar Metas'}
-                      <Save className="w-4 h-4 ml-2" />
-                    </Button>
                   </form>
                 </Form>
               </CardContent>
@@ -539,53 +695,55 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <Form {...systemSettingsForm}>
-                    <form onSubmit={systemSettingsForm.handleSubmit(onSystemSettingsSubmit)} className="space-y-4">
-                      <FormField
-                        control={systemSettingsForm.control}
-                        name="timezone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Fuso Horário</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione seu fuso horário" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="America/Sao_Paulo">São Paulo (GMT-3)</SelectItem>
-                                <SelectItem value="America/New_York">Nova York (GMT-5)</SelectItem>
-                                <SelectItem value="Europe/London">Londres (GMT+0)</SelectItem>
-                                <SelectItem value="Europe/Paris">Paris (GMT+1)</SelectItem>
-                                <SelectItem value="Asia/Tokyo">Tokyo (GMT+9)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={systemSettingsForm.control}
-                        name="hour_format"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Formato de Hora</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="24h">24 horas (14:30)</SelectItem>
-                                <SelectItem value="12h">12 horas (2:30 PM)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <form className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField
+                          control={systemSettingsForm.control}
+                          name="timezone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Fuso Horário</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione seu fuso horário" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="America/Sao_Paulo">São Paulo (GMT-3)</SelectItem>
+                                  <SelectItem value="America/New_York">Nova York (GMT-5)</SelectItem>
+                                  <SelectItem value="Europe/London">Londres (GMT+0)</SelectItem>
+                                  <SelectItem value="Europe/Paris">Paris (GMT+1)</SelectItem>
+                                  <SelectItem value="Asia/Tokyo">Tokyo (GMT+9)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={systemSettingsForm.control}
+                          name="hour_format"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Formato de Hora</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="24h">24 horas (14:30)</SelectItem>
+                                  <SelectItem value="12h">12 horas (2:30 PM)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                       
                       <FormField
                         control={systemSettingsForm.control}
@@ -609,11 +767,6 @@ export default function ProfilePage() {
                           </FormItem>
                         )}
                       />
-                      
-                      <Button type="submit" disabled={isLoading}>
-                        {isLoading ? 'Salvando...' : 'Salvar Configurações'}
-                        <Save className="w-4 h-4 ml-2" />
-                      </Button>
                     </form>
                   </Form>
                 </CardContent>
@@ -628,7 +781,7 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <Form {...preferencesForm}>
-                    <form onSubmit={preferencesForm.handleSubmit(onPreferencesSubmit)} className="space-y-4">
+                    <form className="space-y-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <FormField
                           control={preferencesForm.control}
@@ -724,39 +877,24 @@ export default function ProfilePage() {
                           )}
                         />
                       </div>
-
-                      
-                      <Button type="submit" disabled={isLoading}>
-                        {isLoading ? 'Salvando...' : 'Salvar Preferências'}
-                        <Save className="w-4 h-4 ml-2" />
-                      </Button>
                     </form>
                   </Form>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Ações da Conta</CardTitle>
-                  <CardDescription>
-                    Gerencie sua conta e sessão
-                  </CardDescription>
-                </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Sair da Conta</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Fazer logout da sua sessão atual
-                        </p>
-                      </div>
-                      <Button variant="destructive" onClick={logout}>
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Sair
-                      </Button>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Sair da Conta</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Fazer logout da sua sessão atual
+                      </p>
                     </div>
+                    <Button variant="destructive" onClick={logout}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sair
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

@@ -51,9 +51,12 @@ cp .env.example .env.local
 
 Edite o arquivo `.env.local` com suas credenciais do Supabase:
 ```env
+# URLs e Chaves Públicas (podem ser expostas no cliente)
 NEXT_PUBLIC_SUPABASE_URL=sua_url_do_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima
-SUPABASE_SECRET_KEY=sua_chave_secreta
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_sua_chave
+
+# Chaves Secretas (NUNCA expor no cliente - apenas servidor/scripts)
+SUPABASE_SECRET_KEY=sb_secret_sua_chave
 ```
 
 4. **Configure o Supabase**
@@ -203,8 +206,8 @@ vercel --prod
 
 ### Adicionar variáveis de ambiente no Vercel:
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SECRET_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (chave pública)
+- `SUPABASE_SECRET_KEY` (chave secreta - apenas servidor)
 
 ## 📄 Licença
 

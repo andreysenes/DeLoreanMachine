@@ -593,14 +593,32 @@ export const updateUserPreferences = async (preferencesData: Partial<Omit<UserPr
     const user = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { error } = await supabase
+    // Primeiro, verificar se o registro existe
+    const { data: existing } = await supabase
       .from('user_preferences')
-      .upsert({
-        user_id: user.id,
-        ...preferencesData,
-      });
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-    if (error) throw error;
+    if (existing) {
+      // Se existe, fazer UPDATE
+      const { error } = await supabase
+        .from('user_preferences')
+        .update(preferencesData)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    } else {
+      // Se não existe, fazer INSERT
+      const { error } = await supabase
+        .from('user_preferences')
+        .insert({ 
+          user_id: user.id,
+          ...preferencesData 
+        });
+
+      if (error) throw error;
+    }
   } catch (error) {
     throw handleSupabaseError(error, 'updateUserPreferences');
   }
@@ -639,14 +657,32 @@ export const updateUserSettingsComplete = async (settingsData: Partial<Omit<User
     const user = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { error } = await supabase
+    // Primeiro, verificar se o registro existe
+    const { data: existing } = await supabase
       .from('user_settings')
-      .upsert({ 
-        user_id: user.id,
-        ...settingsData 
-      });
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-    if (error) throw error;
+    if (existing) {
+      // Se existe, fazer UPDATE
+      const { error } = await supabase
+        .from('user_settings')
+        .update(settingsData)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    } else {
+      // Se não existe, fazer INSERT
+      const { error } = await supabase
+        .from('user_settings')
+        .insert({ 
+          user_id: user.id,
+          ...settingsData 
+        });
+
+      if (error) throw error;
+    }
   } catch (err) {
     throw handleSupabaseError(err, 'updateUserSettingsComplete');
   }

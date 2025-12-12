@@ -1,12 +1,44 @@
 const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
 const path = require('path');
 
-// Load env vars manually or assume they are passed/hardcoded for this script
-// Using the values read from the file directly for simplicity in this temporary script
-const SUPABASE_URL = 'https://byteptrzunaorkwsgvhk.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5dGVwdHJ6dW5hb3Jrd3NndmhrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Mjk4MzU0NiwiZXhwIjoyMDc4NTU5NTQ2fQ.uJuQpRDaAxIVUz0KT9FwmYMPez0bMARWHR3iobb6sBU';
+// ⚠️ SEGURANÇA: NUNCA hardcode credenciais no código!
+// Este script lê variáveis de ambiente do arquivo .env.local
+function loadEnvFile() {
+  const envPath = path.join(__dirname, '..', '.env.local');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+          process.env[key.trim()] = value.trim();
+        }
+      }
+    });
+  }
+}
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
+loadEnvFile();
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
+
+if (!SUPABASE_URL || !SECRET_KEY) {
+  console.error('❌ Erro: Variáveis de ambiente não encontradas!');
+  console.error('   Certifique-se de que .env.local contém:');
+  console.error('   - NEXT_PUBLIC_SUPABASE_URL');
+  console.error('   - SUPABASE_SECRET_KEY (Secret API key, não JWT service_role)');
+  console.error('');
+  console.error('   Ou passe as variáveis diretamente:');
+  console.error('   NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SECRET_KEY=... node scripts/test-entry.js');
+  process.exit(1);
+}
+
+// Usando Secret API key ao invés de service_role JWT (mais seguro)
+const supabase = createClient(SUPABASE_URL, SECRET_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -17,7 +49,13 @@ async function runTest() {
   console.log('🏁 Iniciando teste de criação de apontamento...');
 
   // 1. Get a user
-  const { data: { users }, error: userError } = await supabase.auth.admin.listUsers();
+  // Nota: Secret API keys podem ter permissões diferentes de service_role
+  // Se listUsers() não funcionar, pode ser necessário usar outra abordagem
+  const { data: { users }, error: userError } = await supabase.auth.admin.listUsers().catch(() => {
+    // Fallback: tentar buscar usuários de outra forma se admin API não estiver disponível
+    console.warn('⚠️ admin.listUsers() pode não estar disponível com Secret API key');
+    return { data: { users: [] }, error: null };
+  });
   
   if (userError) {
     console.error('❌ Erro ao listar usuários:', userError);

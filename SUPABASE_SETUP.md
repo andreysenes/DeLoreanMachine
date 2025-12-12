@@ -25,8 +25,8 @@
 1. Vá em "**Settings**" → "**API**"
 2. Copie as seguintes informações:
    - **Project URL**: `https://[seu-projeto].supabase.co`
-   - **anon public**: Chave anônima pública
-   - **service_role**: Chave de serviço (secreta)
+   - **Publishable key** (`sb_publishable_*`): Chave pública (pode ser exposta no cliente)
+   - **Secret key** (`sb_secret_*`): Chave secreta (NUNCA exponha no cliente, apenas servidor)
 
 ### 3. ✅ Atualizar .env.local
 
@@ -34,10 +34,12 @@ Substitua no arquivo `.env.local`:
 
 ```env
 # Supabase Configuration - CREDENCIAIS REAIS
+# URLs e Chaves Públicas (podem ser expostas no cliente)
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto-id.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima_real
-SUPABASE_SECRET_KEY=sua_chave_secreta_real
-SUPABASE_SERVICE_ROLE=sua_service_role_real
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_sua_chave_real
+
+# Chaves Secretas (NUNCA expor no cliente - apenas servidor/scripts)
+SUPABASE_SECRET_KEY=sb_secret_sua_chave_real
 ```
 
 ### 4. ✅ Executar SQL no Supabase
@@ -102,7 +104,7 @@ npm run dev
 ## 🚨 IMPORTANTE
 
 1. **Guarde as credenciais** em local seguro
-2. **Não compartilhe** as chaves service_role
+2. **Não compartilhe** as chaves Secret (`sb_secret_*`) - elas podem bypassar Row Level Security
 3. **Use .env.local** (já no .gitignore)
 4. **Para produção**: Configure domínio real no Supabase
 
