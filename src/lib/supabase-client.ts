@@ -593,32 +593,20 @@ export const updateUserPreferences = async (preferencesData: Partial<Omit<UserPr
     const user = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Primeiro, verificar se o registro existe
-    const { data: existing } = await supabase
+    // Usar upsert atômico com onConflict para evitar race conditions
+    const { error } = await supabase
       .from('user_preferences')
-      .select('user_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (existing) {
-      // Se existe, fazer UPDATE
-      const { error } = await supabase
-        .from('user_preferences')
-        .update(preferencesData)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-    } else {
-      // Se não existe, fazer INSERT
-      const { error } = await supabase
-        .from('user_preferences')
-        .insert({ 
+      .upsert(
+        {
           user_id: user.id,
-          ...preferencesData 
-        });
+          ...preferencesData,
+        },
+        {
+          onConflict: 'user_id',
+        }
+      );
 
-      if (error) throw error;
-    }
+    if (error) throw error;
   } catch (error) {
     throw handleSupabaseError(error, 'updateUserPreferences');
   }
@@ -657,32 +645,20 @@ export const updateUserSettingsComplete = async (settingsData: Partial<Omit<User
     const user = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Primeiro, verificar se o registro existe
-    const { data: existing } = await supabase
+    // Usar upsert atômico com onConflict para evitar race conditions
+    const { error } = await supabase
       .from('user_settings')
-      .select('user_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (existing) {
-      // Se existe, fazer UPDATE
-      const { error } = await supabase
-        .from('user_settings')
-        .update(settingsData)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-    } else {
-      // Se não existe, fazer INSERT
-      const { error } = await supabase
-        .from('user_settings')
-        .insert({ 
+      .upsert(
+        {
           user_id: user.id,
-          ...settingsData 
-        });
+          ...settingsData,
+        },
+        {
+          onConflict: 'user_id',
+        }
+      );
 
-      if (error) throw error;
-    }
+    if (error) throw error;
   } catch (err) {
     throw handleSupabaseError(err, 'updateUserSettingsComplete');
   }

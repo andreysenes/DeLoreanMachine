@@ -21,6 +21,7 @@ import {
   updateUserSettingsComplete, 
   logout 
 } from '@/lib/supabase-client';
+import { supabase } from '@/lib/supabase';
 import { 
   useCachedUserProfile, 
   useCachedUserSettings, 
@@ -220,10 +221,23 @@ export default function ProfilePage() {
     const previousData = previousProfileRef.current ? { ...previousProfileRef.current } : null;
     
     try {
+      // Atualizar nome e sobrenome no perfil
       await updateUserProfile({
         first_name: data.nome,
         last_name: data.sobrenome,
       });
+      
+      // Atualizar email se mudou (via auth API)
+      if (previousData && data.email !== previousData.email && supabase) {
+        const { error: emailError } = await supabase.auth.updateUser({
+          email: data.email,
+        });
+        if (emailError) {
+          console.error('Erro ao atualizar email:', emailError);
+          toast.error('Erro ao atualizar email. Verifique se o email é válido e não está em uso.');
+          // Não interrompe o fluxo, mas mostra o erro
+        }
+      }
       
       // Atualizar o cache local com os dados atualizados
       if (profileData && profileData.profile) {
@@ -233,7 +247,11 @@ export default function ProfilePage() {
             ...profileData.profile,
             first_name: data.nome,
             last_name: data.sobrenome,
-          }
+          },
+          user: profileData.user ? {
+            ...profileData.user,
+            email: data.email,
+          } : profileData.user,
         };
         mutateProfile(updatedProfileData);
       }
@@ -385,7 +403,8 @@ export default function ProfilePage() {
       
       const hasChanges = 
         data.nome !== previousProfileRef.current.nome ||
-        data.sobrenome !== previousProfileRef.current.sobrenome;
+        data.sobrenome !== previousProfileRef.current.sobrenome ||
+        data.email !== previousProfileRef.current.email;
       
       if (!hasChanges) return;
       
